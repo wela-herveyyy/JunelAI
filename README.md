@@ -20,34 +20,38 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server for ERPNext a
 
 ### Resources
 
-| URI | Description |
-|-----|-------------|
-| `erpnext://DocTypes` | List available DocTypes |
-| `erpnext://{doctype}/{name}` | Fetch a document as JSON |
-| `erpnext://user-profile` | Logged-in user profile (synced from ERPNext) |
-| `erpnext://doctype-schemas` | List of cached DocType schemas |
-| `erpnext://doctype-schema/{doctype}` | Field schema for one DocType |
+
+| URI                                  | Description                                  |
+| ------------------------------------ | -------------------------------------------- |
+| `erpnext://DocTypes`                 | List available DocTypes                      |
+| `erpnext://{doctype}/{name}`         | Fetch a document as JSON                     |
+| `erpnext://user-profile`             | Logged-in user profile (synced from ERPNext) |
+| `erpnext://doctype-schemas`          | List of cached DocType schemas               |
+| `erpnext://doctype-schema/{doctype}` | Field schema for one DocType                 |
+
 
 ### Tools
 
-| Tool | Description |
-|------|-------------|
-| `get_user_profile` | **Call first** — name, position, email, employee (syncs from ERPNext) |
-| `update_user_profile` | Save profile overrides locally |
-| `get_doctype_schema` | **Before queries** — cached DocType fields (auto-saves on first access) |
-| `list_doctype_schemas` | List DocTypes already in schema cache |
-| `check_auth` | Verify session or API key status |
-| `get_doctypes` | List all DocTypes |
-| `get_doctype_fields` | Infer fields from a sample document |
-| `get_documents` | Query documents with filters |
-| `get_document` | Fetch one document with child tables |
-| `create_document` | Create a draft document |
-| `update_document` | Update an existing document |
-| `delete_document` | Permanently delete a document |
-| `submit_document` | Submit a submittable document |
-| `cancel_document` | Cancel a submitted document |
-| `call_method` | Call a whitelisted Frappe API method |
-| `run_report` | Run an ERPNext report |
+
+| Tool                   | Description                                                             |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `get_user_profile`     | **Call first** — name, position, email, employee (syncs from ERPNext)   |
+| `update_user_profile`  | Save profile overrides locally                                          |
+| `get_doctype_schema`   | **Before queries** — cached DocType fields (auto-saves on first access) |
+| `list_doctype_schemas` | List DocTypes already in schema cache                                   |
+| `check_auth`           | Verify session or API key status                                        |
+| `get_doctypes`         | List all DocTypes                                                       |
+| `get_doctype_fields`   | Infer fields from a sample document                                     |
+| `get_documents`        | Query documents with filters                                            |
+| `get_document`         | Fetch one document with child tables                                    |
+| `create_document`      | Create a draft document                                                 |
+| `update_document`      | Update an existing document                                             |
+| `delete_document`      | Permanently delete a document                                           |
+| `submit_document`      | Submit a submittable document                                           |
+| `cancel_document`      | Cancel a submitted document                                             |
+| `call_method`          | Call a whitelisted Frappe API method                                    |
+| `run_report`           | Run an ERPNext report                                                   |
+
 
 ## Requirements
 
@@ -79,13 +83,15 @@ npm run setup-profile
 
 Prompts for:
 
-| Field | Example |
-|-------|---------|
-| Full name | Hervey Geralph C. Mapano |
-| Position | Web Developer |
-| Work email | hervey.geralph@livro.systems |
-| Company | Livro Systems Inc. |
-| Department | Product Dev - LSI |
+
+| Field      | Example                                                             |
+| ---------- | ------------------------------------------------------------------- |
+| Full name  | Hervey Geralph C. Mapano                                            |
+| Position   | Web Developer                                                       |
+| Work email | [hervey.geralph@livro.systems](mailto:hervey.geralph@livro.systems) |
+| Company    | Livro Systems Inc.                                                  |
+| Department | Product Dev - LSI                                                   |
+
 
 **Non-interactive (automation / AI agents):**
 
@@ -133,17 +139,73 @@ npm run export-mcp-config   # Re-export MCP client config snippets
 
 SID sessions expire. When MCP stops working, run `npm run setup-sid` again.
 
+**Credentials file** — `~/.erpnext-mcp/credentials.json` (Windows: `%USERPROFILE%\.erpnext-mcp\credentials.json`)
+
+Written by `npm run setup-sid` or `npm run setup-auth`. The MCP server loads it via `ERPNEXT_CREDENTIALS_FILE`. Use **one** auth method per file — do not commit this file to git.
+
+**SID session (recommended)** — from `npm run setup-sid`:
+
+```json
+{
+  "ERPNEXT_URL": "https://erp.livro.systems",
+  "ERPNEXT_SID": "your-session-id-from-browser-cookies",
+  "ERPNEXT_CSRF_TOKEN": "optional-csrf-token-from-devtools",
+  "_meta": {
+    "authMethod": "sid",
+    "loggedUser": "you@livro.systems",
+    "savedAt": "2026-06-16T01:00:00.000Z",
+    "setupVersion": 1
+  }
+}
+```
+
+**API key** — from `npm run setup-auth` (option 1):
+
+```json
+{
+  "ERPNEXT_URL": "https://erp.livro.systems",
+  "ERPNEXT_API_KEY": "your-api-key",
+  "ERPNEXT_API_SECRET": "your-api-secret",
+  "_meta": {
+    "authMethod": "api_key",
+    "loggedUser": "you@livro.systems",
+    "savedAt": "2026-06-16T01:00:00.000Z",
+    "setupVersion": 1
+  }
+}
+```
+
+**Username / password** — from `npm run setup-auth` (option 2):
+
+```json
+{
+  "ERPNEXT_URL": "https://erp.livro.systems",
+  "ERPNEXT_USERNAME": "you@livro.systems",
+  "ERPNEXT_PASSWORD": "your-password",
+  "_meta": {
+    "authMethod": "password",
+    "loggedUser": "you@livro.systems",
+    "savedAt": "2026-06-16T01:00:00.000Z",
+    "setupVersion": 1
+  }
+}
+```
+
+Supported keys: `ERPNEXT_URL`, `ERPNEXT_SID`, `ERPNEXT_CSRF_TOKEN`, `ERPNEXT_COOKIE`, `ERPNEXT_API_KEY`, `ERPNEXT_API_SECRET`, `ERPNEXT_USERNAME`, `ERPNEXT_PASSWORD`. `_meta` is optional metadata added by setup scripts.
+
 After `npm run setup-sid`, ready-made snippets are written to:
 
 `~/.erpnext-mcp/client-configs/` (or `%USERPROFILE%\.erpnext-mcp\client-configs\` on Windows)
 
-| File | Client |
-|------|--------|
-| `cursor.mcp.json` | Cursor |
-| `claude_desktop_config.json` | Claude Desktop |
-| `gemini.settings.json` | Gemini CLI |
-| `opencode.config.json` | OpenCode |
-| `mcpServers.json` | All JSON clients (shared block) |
+
+| File                         | Client                          |
+| ---------------------------- | ------------------------------- |
+| `cursor.mcp.json`            | Cursor                          |
+| `claude_desktop_config.json` | Claude Desktop                  |
+| `gemini.settings.json`       | Gemini CLI                      |
+| `opencode.config.json`       | OpenCode                        |
+| `mcpServers.json`            | All JSON clients (shared block) |
+
 
 Re-export anytime: `npm run export-mcp-config`
 
@@ -151,12 +213,14 @@ Re-export anytime: `npm run export-mcp-config`
 
 Follow the [Client tutorials](#client-tutorials) for your tool:
 
-| Client | Tutorial |
-|--------|----------|
-| Cursor | [Cursor](#cursor) |
+
+| Client         | Tutorial                          |
+| -------------- | --------------------------------- |
+| Cursor         | [Cursor](#cursor)                 |
 | Claude Desktop | [Claude Desktop](#claude-desktop) |
-| Gemini CLI | [Gemini CLI](#gemini-cli) |
-| OpenCode | [OpenCode](#opencode) |
+| Gemini CLI     | [Gemini CLI](#gemini-cli)         |
+| OpenCode       | [OpenCode](#opencode)             |
+
 
 Each tutorial lists the config file path, merge steps, a full JSON example, and test prompts. Snippets from `npm run setup-sid` are in `~/.erpnext-mcp/client-configs/`.
 
@@ -170,12 +234,14 @@ Prerequisites for every client:
 2. `npm run setup-profile`
 3. `npm run setup-sid` (writes configs to `~/.erpnext-mcp/client-configs/`)
 
-| Client | Config file (Windows) | Config file (macOS / Linux) |
-|--------|------------------------|-----------------------------|
-| [Cursor](#cursor) | `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json` | `~/.cursor/mcp.json` |
-| [Claude Desktop](#claude-desktop) | `%APPDATA%\Claude\claude_desktop_config.json` | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| [Gemini CLI](#gemini-cli) | `~/.gemini/settings.json` | `~/.gemini/settings.json` |
-| [OpenCode](#opencode) | `%APPDATA%\opencode\config.json` | `~/.config/opencode/config.json` |
+
+| Client                            | Config file (Windows)                                     | Config file (macOS / Linux)                                       |
+| --------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| [Cursor](#cursor)                 | `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json` | `~/.cursor/mcp.json`                                              |
+| [Claude Desktop](#claude-desktop) | `%APPDATA%\Claude\claude_desktop_config.json`             | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| [Gemini CLI](#gemini-cli)         | `~/.gemini/settings.json`                                 | `~/.gemini/settings.json`                                         |
+| [OpenCode](#opencode)             | `%APPDATA%\opencode\config.json`                          | `~/.config/opencode/config.json`                                  |
+
 
 All four use the same JSON `mcpServers` block. Only **Codex CLI** uses TOML (`~/.codex/config.toml`) — see `client-configs/codex.config.toml` after `setup-sid`.
 
@@ -183,18 +249,20 @@ All four use the same JSON `mcpServers` block. Only **Codex CLI** uses TOML (`~/
 
 **Config file**
 
-| OS | Path |
-|----|------|
-| Windows | `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json` |
-| macOS / Linux | `~/.cursor/mcp.json` |
+
+| OS            | Path                                                      |
+| ------------- | --------------------------------------------------------- |
+| Windows       | `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json` |
+| macOS / Linux | `~/.cursor/mcp.json`                                      |
+
 
 **Steps**
 
 1. Finish [Setup](#setup) steps 1–3 (`npm run build`, `setup-profile`, `setup-sid`).
-2. Open Cursor → **Settings** → **MCP** → **Edit config**  
-   Or edit the file above directly in a text editor.
-3. Merge the `mcpServers` block from `~/.erpnext-mcp/client-configs/cursor.mcp.json`  
-   If the file already has other servers, add `"erpnext": { ... }` inside `mcpServers` — do not replace the whole file unless it is empty.
+2. Open Cursor → **Settings** → **MCP** → **Edit config**
+  Or edit the file above directly in a text editor.
+3. Merge the `mcpServers` block from `~/.erpnext-mcp/client-configs/cursor.mcp.json`
+  If the file already has other servers, add `"erpnext": { ... }` inside `mcpServers` — do not replace the whole file unless it is empty.
 4. Use absolute paths for `args` and `ERPNEXT_CREDENTIALS_FILE` (Windows: forward slashes work in JSON, e.g. `C:/Users/...`).
 5. **Reload** Cursor (Command Palette → “Developer: Reload Window”) or restart Cursor.
 6. Open **Chat** → confirm **erpnext** appears under MCP tools (green / connected).
@@ -234,22 +302,24 @@ Then get_user_profile with sync true.
 
 **Config file**
 
-| OS | Path |
-|----|------|
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+| OS      | Path                                                              |
+| ------- | ----------------------------------------------------------------- |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json`                     |
+| macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Linux   | `~/.config/Claude/claude_desktop_config.json`                     |
+
 
 **Steps**
 
 1. Complete setup steps 1–3.
 2. Quit Claude Desktop completely (tray icon → Exit).
 3. Open the config file above. Create it if missing:
-   ```json
+  ```json
    {
      "mcpServers": {}
    }
-   ```
+  ```
 4. Paste the `erpnext` entry from `~/.erpnext-mcp/client-configs/claude_desktop_config.json` into `mcpServers`.
 5. Save the file.
 6. Start Claude Desktop again.
@@ -290,9 +360,11 @@ List my Livro Tasks where dev_assignee is me.
 
 **Config file**
 
-| OS | Path |
-|----|------|
+
+| OS  | Path                      |
+| --- | ------------------------- |
 | All | `~/.gemini/settings.json` |
+
 
 **Steps**
 
@@ -318,11 +390,11 @@ Example minimal file:
 }
 ```
 
-5. Save and start a new Gemini CLI session:
-   ```bash
+1. Save and start a new Gemini CLI session:
+  ```bash
    gemini
-   ```
-6. Run `/mcp` (if your CLI version supports it) to list connected servers, or ask the model to use erpnext tools.
+  ```
+2. Run `/mcp` (if your CLI version supports it) to list connected servers, or ask the model to use erpnext tools.
 
 **Test in chat**
 
@@ -347,17 +419,19 @@ Using MCP server erpnext, call get_user_profile with sync true and summarize my 
 
 **Config file**
 
-| OS | Path |
-|----|------|
-| Windows | `%APPDATA%\opencode\config.json` |
+
+| OS            | Path                             |
+| ------------- | -------------------------------- |
+| Windows       | `%APPDATA%\opencode\config.json` |
 | macOS / Linux | `~/.config/opencode/config.json` |
+
 
 **Steps**
 
 1. Complete setup steps 1–3.
 2. Open or create the config file for your OS.
-3. Merge content from `~/.erpnext-mcp/client-configs/opencode.config.json`  
-   OpenCode expects the same `mcpServers` JSON shape as Cursor and Claude.
+3. Merge content from `~/.erpnext-mcp/client-configs/opencode.config.json`
+  OpenCode expects the same `mcpServers` JSON shape as Cursor and Claude.
 4. Save the file.
 5. Restart OpenCode (or start a new session) so it reloads MCP servers.
 6. Confirm **erpnext** is available in the tool / MCP panel.
@@ -407,15 +481,17 @@ npm run inspector
 
 ### Common issues
 
-| Symptom | Fix |
-|---------|-----|
-| MCP red / disconnected | `npm run verify-auth` → if fail, `npm run setup-sid` |
-| `Invalid or expired sid` | Re-run `npm run setup-sid`, restart client |
-| `ERPNEXT_URL is required` | Add `ERPNEXT_URL` to `env` in MCP config |
-| Server not found | Use **absolute** path to `build/index.js` in `args` |
-| Tools not showing (Claude) | Fully quit and reopen Claude Desktop |
-| Tools not showing (Cursor) | Reload window; check MCP settings enabled |
-| Node not found | Install Node 18+; ensure `node` is on PATH |
+
+| Symptom                    | Fix                                                  |
+| -------------------------- | ---------------------------------------------------- |
+| MCP red / disconnected     | `npm run verify-auth` → if fail, `npm run setup-sid` |
+| `Invalid or expired sid`   | Re-run `npm run setup-sid`, restart client           |
+| `ERPNEXT_URL is required`  | Add `ERPNEXT_URL` to `env` in MCP config             |
+| Server not found           | Use **absolute** path to `build/index.js` in `args`  |
+| Tools not showing (Claude) | Fully quit and reopen Claude Desktop                 |
+| Tools not showing (Cursor) | Reload window; check MCP settings enabled            |
+| Node not found             | Install Node 18+; ensure `node` is on PATH           |
+
 
 ### Re-export configs
 
@@ -429,13 +505,15 @@ Prints snippets and refreshes `~/.erpnext-mcp/client-configs/`.
 
 ### Setup scripts reference
 
-| Command | Purpose |
-|---------|---------|
-| `npm run setup-profile` | Set full name, position, work email, company, department |
-| `npm run setup-sid` | Browser SID login + credentials + MCP config export |
-| `npm run setup-auth` | API key, password, or SID (menu) |
-| `npm run verify-auth` | Test saved ERPNext credentials |
-| `npm run export-mcp-config` | Re-export MCP snippets for Cursor, Claude, etc. |
+
+| Command                     | Purpose                                                  |
+| --------------------------- | -------------------------------------------------------- |
+| `npm run setup-profile`     | Set full name, position, work email, company, department |
+| `npm run setup-sid`         | Browser SID login + credentials + MCP config export      |
+| `npm run setup-auth`        | API key, password, or SID (menu)                         |
+| `npm run verify-auth`       | Test saved ERPNext credentials                           |
+| `npm run export-mcp-config` | Re-export MCP snippets for Cursor, Claude, etc.          |
+
 
 CLI binaries (after `npm install -g` or `npx`):
 
@@ -446,12 +524,14 @@ CLI binaries (after `npm install -g` or `npx`):
 
 ## Profile-first workflow
 
-All ERPNext skills in this repo call **`get_user_profile` first**. Identity drives leave letters, MOM attribution, task filters, and salary scope.
+All ERPNext skills in this repo call `**get_user_profile` first**. Identity drives leave letters, MOM attribution, task filters, and salary scope.
 
-| When | Use |
-|------|-----|
-| MCP connected | `get_user_profile` / `update_user_profile` |
-| MCP down | `npm run setup-profile` or `.cursor/memory-lane/user-profile.md` |
+
+| When          | Use                                                              |
+| ------------- | ---------------------------------------------------------------- |
+| MCP connected | `get_user_profile` / `update_user_profile`                       |
+| MCP down      | `npm run setup-profile` or `.cursor/memory-lane/user-profile.md` |
+
 
 Details: `.cursor/skills/_shared/profile-first.md`, `.cursor/memory-lane/doctypes/`, and `.cursor/skills/memory-lane-doctype-schema/SKILL.md`.
 
@@ -498,4 +578,4 @@ Pushing a `v*` tag triggers the GitHub Release workflow (`.github/workflows/rele
 
 MIT — see [LICENSE](./LICENSE).
 
-Based on the original [erpnext-mcp-server](https://github.com/rakeshgangwar/erpnext-mcp-server) by Rakesh Gangwar. Maintained and extended by **Hervey geralph Mapano**.
+Based on the original [erpnext-mcp-server](https://github.com/rakeshgangwar/erpnext-mcp-server) by Rakesh Gangwar. Maintained and extended by **Hervey Geralph Mapano**.
