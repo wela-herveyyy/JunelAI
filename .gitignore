@@ -1,0 +1,17 @@
+node_modules/
+build/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+
+# Local credentials and generated configs
+.credentials/
+scripts/drafts/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

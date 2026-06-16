@@ -1,0 +1,62 @@
+{
+  "name": "erpnext-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for ERPNext / Frappe integration",
+  "type": "module",
+  "main": "./build/index.js",
+  "bin": {
+    "erpnext-mcp-server": "./build/index.js",
+    "erpnext-server": "./build/index.js",
+    "erpnext-mcp-setup-sid": "./scripts/setup-sid.mjs",
+    "erpnext-mcp-setup-auth": "./scripts/setup-auth.mjs",
+    "erpnext-mcp-verify-auth": "./scripts/verify-auth.mjs"
+  },
+  "files": [
+    "build",
+    "scripts",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/postbuild.mjs",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js",
+    "setup-auth": "node scripts/setup-auth.mjs",
+    "setup-sid": "node scripts/setup-sid.mjs",
+    "verify-auth": "node scripts/verify-auth.mjs",
+    "export-mcp-config": "node scripts/export-mcp-config.mjs",
+    "save-leave-draft": "node scripts/save-leave-draft.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "erpnext",
+    "frappe",
+    "ai",
+    "cursor",
+    "claude"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rakeshgangwar/erpnext-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rakeshgangwar/erpnext-mcp-server/issues"
+  },
+  "homepage": "https://github.com/rakeshgangwar/erpnext-mcp-server#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "axios": "^1.8.4",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}

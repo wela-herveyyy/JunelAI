@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERPNext MCP — Copy SID</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Segoe UI, system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    body {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .muted { opacity: 0.75; }
+    ol { padding-left: 1.25rem; }
+    li { margin: 0.75rem 0; }
+    code, kbd {
+      background: rgba(127, 127, 127, 0.15);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.95em;
+    }
+    .box {
+      border: 1px solid rgba(127, 127, 127, 0.35);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0;
+    }
+    .warn {
+      border-color: #c97a00;
+      background: rgba(201, 122, 0, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <h1>Copy your ERPNext SID</h1>
+  <p class="muted">Use this guide after the setup script opens ERPNext login.</p>
+
+  <div class="box warn">
+    <strong>Important:</strong> Stay on your ERPNext tab. Do not use localhost or redirect links.
+    You only copy one cookie value, then return to the terminal.
+  </div>
+
+  <ol>
+    <li>Log in to ERPNext in the other browser tab.</li>
+    <li>Open DevTools with <kbd>F12</kbd>.</li>
+    <li>Go to <strong>Application</strong> → <strong>Cookies</strong> → your ERP site.</li>
+    <li>Click the row named <code>sid</code>.</li>
+    <li>Copy the <strong>Value</strong> column (double-click, then <kbd>Ctrl+C</kbd>).</li>
+    <li>Return to the terminal and press <strong>Enter</strong> — the setup script reads your clipboard automatically.</li>
+  </ol>
+
+  <div class="box">
+    <strong>Edge / Chrome path:</strong>
+    <code>F12 → Application → Storage → Cookies → sid → Value</code>
+  </div>
+
+  <div class="box">
+    <strong>If clipboard auto-detect fails:</strong> paste the SID manually when the terminal asks for it.
+  </div>
+
+  <p class="muted">Works with Cursor, Claude Desktop, Gemini CLI, Codex CLI, and OpenCode. SID sessions expire — run <code>npm run setup-sid</code> again when MCP stops working.</p>
+</body>
+</html>
