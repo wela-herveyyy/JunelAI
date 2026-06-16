@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server for ERPNext and Frappe. Connect AI assistants in **Cursor**, **Claude Desktop**, **Gemini CLI**, **Codex**, or **OpenCode** to your ERPNext instance — query documents, create records, run reports, and call whitelisted API methods from chat.
 
-**Author:** [Hervey geralph Mapano](https://github.com/hmapalad)
+**Author:** [Hervey geralph Mapano](https://github.com/herveyyy)
 
 ## Contents
 
