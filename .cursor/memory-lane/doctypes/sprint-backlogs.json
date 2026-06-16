@@ -1,0 +1,93 @@
+{
+  "doctype": "Sprint Backlogs",
+  "keyFields": [
+    "name",
+    "subject",
+    "status",
+    "type",
+    "priority",
+    "owner",
+    "current_assignee",
+    "dev_assignee",
+    "dev_assignee_name",
+    "qa_assignee",
+    "tech_assignee",
+    "project",
+    "project_name",
+    "project_manager",
+    "product_owner",
+    "module",
+    "sprint_assign",
+    "sprint_points",
+    "product_backlogs_reference",
+    "parent_task",
+    "exp_start_date",
+    "exp_end_date",
+    "date_assigned",
+    "description",
+    "task_summary",
+    "actions_taken",
+    "devops_status",
+    "code_review_status",
+    "custom_git_branch",
+    "custom_pull_request_link",
+    "custom_is_released",
+    "is_group",
+    "is_template",
+    "docstatus"
+  ],
+  "commonFilters": [
+    "dev_assignee",
+    "current_assignee",
+    "owner",
+    "status",
+    "sprint_assign",
+    "module",
+    "priority",
+    "type",
+    "product_backlogs_reference",
+    "qa_assignee"
+  ],
+  "childTables": [
+    "threads_logs",
+    "task_depends",
+    "team_shared",
+    "custom_github_links"
+  ],
+  "statusValues": [
+    "Open",
+    "Working",
+    "Overdue",
+    "Pending Review",
+    "Completed",
+    "Cancelled",
+    "Closed"
+  ],
+  "listFields": [
+    "name",
+    "subject",
+    "status",
+    "type",
+    "priority",
+    "current_assignee",
+    "dev_assignee",
+    "qa_assignee",
+    "sprint_assign",
+    "sprint_points",
+    "product_backlogs_reference",
+    "module",
+    "exp_end_date",
+    "devops_status",
+    "modified"
+  ],
+  "relatedDoctypes": {
+    "product_backlogs_reference": "Livro Task (LT-xxxx)",
+    "notes": "SPB = Sprint Backlog item; often links to Livro Task via product_backlogs_reference"
+  },
+  "notes": "Sprint execution tracker (SPB-xxxx). Differs from Livro Task (LT-xxxx) — use this doctype for sprint-assigned dev work.",
+  "_meta": {
+    "cachedAt": "2026-06-16",
+    "source": "manual",
+    "sampleDocument": "SPB-00289"
+  }
+}

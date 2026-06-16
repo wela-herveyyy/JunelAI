@@ -1,0 +1,31 @@
+{
+  "doctype": "Salary Slip",
+  "keyFields": [
+    "name",
+    "employee",
+    "employee_name",
+    "company",
+    "department",
+    "designation",
+    "start_date",
+    "end_date",
+    "posting_date",
+    "gross_pay",
+    "total_deduction",
+    "net_pay",
+    "rounded_total",
+    "status",
+    "payroll_frequency",
+    "year_to_date",
+    "gross_year_to_date",
+    "earnings",
+    "deductions"
+  ],
+  "commonFilters": ["employee", "status", "start_date", "end_date"],
+  "childTables": ["earnings", "deductions", "employer_share", "loans"],
+  "notes": "Filter status Submitted for payslip history. Use get_document for earnings/deductions breakdown.",
+  "_meta": {
+    "cachedAt": "",
+    "source": "manual"
+  }
+}

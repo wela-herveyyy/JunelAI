@@ -12,6 +12,7 @@ export class ERPNextClient {
   private authMethod = "none";
   private loggedUser = "";
   private credentialsFile: string | null = null;
+  private lastAuthError: string | null = null;
 
   constructor(private readonly logger: Logger) {
     this.baseUrl = process.env.ERPNEXT_URL || "";
@@ -62,9 +63,15 @@ export class ERPNextClient {
   }
 
   async initializeAuth(): Promise<void> {
+    this.lastAuthError = null;
+
     if (this.authenticated) {
       if (this.authMethod === "api_key") {
-        await this.refreshLoggedUser();
+        try {
+          await this.refreshLoggedUser();
+        } catch (error: unknown) {
+          this.recordAuthFailure("api_key", error);
+        }
       }
       return;
     }
@@ -75,22 +82,46 @@ export class ERPNextClient {
     const cookie = process.env.ERPNEXT_COOKIE;
 
     if (sid) {
-      await this.loginWithSid(sid);
+      try {
+        await this.loginWithSid(sid);
+      } catch (error: unknown) {
+        this.recordAuthFailure("sid", error);
+      }
       return;
     }
 
     if (cookie) {
-      this.applyCookieString(cookie);
-      await this.refreshCsrfToken();
-      this.authenticated = true;
-      this.authMethod = "cookie";
-      await this.refreshLoggedUser();
+      try {
+        this.applyCookieString(cookie);
+        await this.refreshCsrfToken();
+        this.authenticated = true;
+        this.authMethod = "cookie";
+        await this.refreshLoggedUser();
+      } catch (error: unknown) {
+        this.recordAuthFailure("cookie", error);
+      }
       return;
     }
 
     if (username && password) {
-      await this.loginWithCredentials(username, password);
+      try {
+        await this.loginWithCredentials(username, password);
+      } catch (error: unknown) {
+        this.recordAuthFailure("password", error);
+      }
     }
+  }
+
+  private recordAuthFailure(method: string, error: unknown): void {
+    this.authenticated = false;
+    this.authMethod = method;
+    this.loggedUser = "";
+    const detail = error instanceof Error ? error.message : String(error);
+    this.lastAuthError =
+      method === "sid" && !detail.includes(AUTH_SETUP_HINT)
+        ? `Invalid or expired sid cookie: ${detail}. ${AUTH_SETUP_HINT}`
+        : detail;
+    this.logger.warn(`ERPNext auth failed (${method}): ${this.lastAuthError}`);
   }
 
   private getCookieHeader(): string {
@@ -200,10 +231,11 @@ export class ERPNextClient {
     if (!this.authenticated) {
       return {
         authenticated: false,
-        authMethod: detectAuthMethod(),
+        authMethod: this.authMethod !== "none" ? this.authMethod : detectAuthMethod(),
         loggedUser: null,
         credentialsFile: this.credentialsFile,
-        message: `Not authenticated. ${AUTH_SETUP_HINT}`,
+        message:
+          this.lastAuthError ?? `Not authenticated. ${AUTH_SETUP_HINT}`,
       };
     }
 
@@ -234,6 +266,10 @@ export class ERPNextClient {
 
   isAuthenticated(): boolean {
     return this.authenticated;
+  }
+
+  getLoggedUser(): string {
+    return this.loggedUser;
   }
 
   async getDocument(doctype: string, name: string): Promise<Record<string, unknown>> {

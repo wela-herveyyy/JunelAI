@@ -9,7 +9,8 @@
     "erpnext-server": "./build/index.js",
     "erpnext-mcp-setup-sid": "./scripts/setup-sid.mjs",
     "erpnext-mcp-setup-auth": "./scripts/setup-auth.mjs",
-    "erpnext-mcp-verify-auth": "./scripts/verify-auth.mjs"
+    "erpnext-mcp-verify-auth": "./scripts/verify-auth.mjs",
+    "erpnext-mcp-setup-profile": "./scripts/setup-profile.mjs"
   },
   "files": [
     "build",
@@ -26,6 +27,7 @@
     "setup-auth": "node scripts/setup-auth.mjs",
     "setup-sid": "node scripts/setup-sid.mjs",
     "verify-auth": "node scripts/verify-auth.mjs",
+    "setup-profile": "node scripts/setup-profile.mjs",
     "export-mcp-config": "node scripts/export-mcp-config.mjs",
     "save-leave-draft": "node scripts/save-leave-draft.mjs"
   },

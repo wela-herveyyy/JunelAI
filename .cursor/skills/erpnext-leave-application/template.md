@@ -1,8 +1,18 @@
 # Leave Application description template
 
-Plain text for the `description` field. Replace bracketed placeholders.
+Plain text for `description`. **All identity placeholders come from `get_user_profile`.**
 
-## Full letter (vacation / personal leave)
+## Profile mapping
+
+| Placeholder | Profile field |
+|-------------|---------------|
+| `[Employee full name]` | `fullName` |
+| `[Designation]` | `position` |
+| `[Department]` | `department` |
+| `[email]` | `workEmail` |
+| `[Approver title and name]` | From Employee `leave_approver` (query if not in profile) |
+
+## Full letter
 
 ```
 Dear [Approver title and name],
@@ -21,33 +31,29 @@ Best regards,
 [Designation] | [Department]
 ```
 
-## Short reason (expand before create)
+## Short reason
 
-If the user only says e.g. "vacation June 24 for a community event", expand into the full letter format above before calling `create_document`.
+If the user only gives a short reason, expand using profile sign-off — never invent name, email, or title.
 
-## Half-day leave
+## Half-day / sick leave
 
-Set `half_day: 1` and `half_day_date` to the leave date. Mention morning/afternoon in `description` if the user specifies.
+Same profile mapping. Mention morning/afternoon for half-day if user specifies.
 
-## Sick leave
-
-Use `leave_type: "Sick Leave"`. Keep the tone factual; include expected return date if known.
-
-## Example (real)
-
-From `scripts/drafts/leave-application-2026-06-24.json`:
+## Example structure (substitute from profile)
 
 ```
-Dear Sir Den,
+Dear [approver],
 
-I am writing to formally request a vacation leave on Wednesday, June 24, 2026.
+I am writing to formally request a vacation leave on [date].
 
-I will be attending a community event on that date and would like to use this time to participate and fulfill my commitment to the activity. I will make sure my current tasks are updated before my leave, and I remain reachable at hervey.geralph@livro.systems for any urgent concerns.
+[reason]
 
-Thank you for your consideration.
+I remain reachable at [profile.workEmail] for urgent concerns.
 
 Best regards,
 
-Hervey Geralph Cabig Mapano
-Web Developer | Product Dev - LSI
+[profile.fullName]
+[profile.position] | [profile.department]
 ```
+
+Do not copy hardcoded names from old drafts — always substitute live profile values.

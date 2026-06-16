@@ -8,6 +8,8 @@ import { loadCredentialsIntoEnv } from "./config/credentials.js";
 import { AUTH_SETUP_HINT, SERVER_NAME } from "./constants.js";
 import { registerResourceHandlers } from "./handlers/resources.js";
 import { registerToolHandlers } from "./handlers/tools/index.js";
+import { UserProfileManager } from "./profile/index.js";
+import { DocTypeCacheManager } from "./doctype-cache/index.js";
 import { createLogger } from "./utils/logger.js";
 
 function readPackageVersion(): string {
@@ -29,9 +31,17 @@ export async function startServer(): Promise<void> {
   erpnext.setCredentialsFile(credentialsFile);
   await erpnext.initializeAuth();
 
+  const profile = new UserProfileManager(erpnext);
+  await profile.initialize();
+
+  const doctypeCache = new DocTypeCacheManager(erpnext);
+
   if (!erpnext.isAuthenticated()) {
+    const authStatus = await erpnext.getAuthStatus();
     logger.warn(
-      `No auth configured. ${AUTH_SETUP_HINT} Or set API keys / ERPNEXT_CREDENTIALS_FILE.`
+      typeof authStatus.message === "string"
+        ? authStatus.message
+        : `No auth configured. ${AUTH_SETUP_HINT}`
     );
   }
 
@@ -48,8 +58,8 @@ export async function startServer(): Promise<void> {
     }
   );
 
-  registerResourceHandlers(server, erpnext);
-  registerToolHandlers(server, erpnext);
+  registerResourceHandlers(server, erpnext, profile, doctypeCache);
+  registerToolHandlers(server, erpnext, profile, doctypeCache);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

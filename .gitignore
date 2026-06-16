@@ -10,6 +10,9 @@ dist/
 .credentials/
 scripts/drafts/
 
+# User profile memory (local only)
+.cursor/memory-lane/user-profile.md
+
 # OS / editor
 .DS_Store
 Thumbs.db

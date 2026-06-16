@@ -8,8 +8,38 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "get_doctype_schema",
+    description:
+      "Get cached DocType schema (fields, types, sample). Fetches from ERPNext on first access or when refresh=true, then stores in ~/.erpnext-mcp/doctypes/ for reuse. Prefer this over get_doctype_fields for query building.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        doctype: {
+          type: "string",
+          description: "ERPNext DocType (e.g., Livro Task, Leave Application)",
+        },
+        refresh: {
+          type: "boolean",
+          description:
+            "If true, re-fetch from ERPNext and update cache (default: false)",
+        },
+      },
+      required: ["doctype"],
+    },
+  },
+  {
+    name: "list_doctype_schemas",
+    description:
+      "List DocTypes that have a cached schema in ~/.erpnext-mcp/doctypes/",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "get_doctype_fields",
-    description: "Get fields list for a specific DocType",
+    description:
+      "Get fields list for a DocType from a sample document. Prefer get_doctype_schema for cached/reusable structure.",
     inputSchema: {
       type: "object",
       properties: {
@@ -212,6 +242,39 @@ export const TOOL_DEFINITIONS = [
         },
       },
       required: ["doctype", "name"],
+    },
+  },
+  {
+    name: "get_user_profile",
+    description:
+      "Get the logged-in user profile (full name, position, work email, company, department, ERPNext user, employee). Syncs from ERPNext Employee/User records when authenticated. Call this first before other ERPNext workflows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sync: {
+          type: "boolean",
+          description:
+            "If true (default), refresh profile from ERPNext before returning",
+        },
+      },
+    },
+  },
+  {
+    name: "update_user_profile",
+    description:
+      "Update local user profile fields. ERPNext-synced fields can be overridden here. Accepts fullName, position, workEmail, company, department, timezone, dateFormat, notes (snake_case aliases also accepted).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fullName: { type: "string", description: "Full name" },
+        position: { type: "string", description: "Job title / designation" },
+        workEmail: { type: "string", description: "Work email address" },
+        company: { type: "string", description: "Company name" },
+        department: { type: "string", description: "Department" },
+        timezone: { type: "string", description: "IANA timezone" },
+        dateFormat: { type: "string", description: "Preferred date format" },
+        notes: { type: "string", description: "Free-form notes" },
+      },
     },
   },
   {

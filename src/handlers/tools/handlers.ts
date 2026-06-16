@@ -5,6 +5,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { ERPNextClient } from "../../client/erpnext-client.js";
 import { AUTH_SETUP_HINT } from "../../constants.js";
+import type { DocTypeCacheManager } from "../../doctype-cache/index.js";
+import type { UserProfileManager } from "../../profile/index.js";
 
 type ToolArgs = Record<string, unknown> | undefined;
 
@@ -36,8 +38,47 @@ function successDocResult(
 export async function handleToolCall(
   name: string,
   args: ToolArgs,
-  erpnext: ERPNextClient
+  erpnext: ERPNextClient,
+  profile: UserProfileManager,
+  doctypeCache: DocTypeCacheManager
 ): Promise<CallToolResult> {
+  if (name === "get_user_profile") {
+    const sync = args?.sync !== false;
+    try {
+      const data = await profile.get(sync && erpnext.isAuthenticated());
+      return textResult(JSON.stringify(data, null, 2));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return textResult(`Failed to get user profile: ${message}`, true);
+    }
+  }
+
+  if (name === "update_user_profile") {
+    if (!args || Object.keys(args).length === 0) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        "At least one profile field is required"
+      );
+    }
+    try {
+      const result = await profile.update(args);
+      return textResult(
+        JSON.stringify(
+          {
+            status: "success",
+            path: result.path,
+            profile: result.profile,
+          },
+          null,
+          2
+        )
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return textResult(`Failed to update user profile: ${message}`, true);
+    }
+  }
+
   if (name === "check_auth") {
     try {
       const status = await erpnext.getAuthStatus();
@@ -309,6 +350,36 @@ export async function handleToolCall(
           `Failed to delete ${doctype} ${docName}: ${message}`,
           true
         );
+      }
+    }
+
+    case "get_doctype_schema": {
+      const doctype = String(args?.doctype);
+      const refresh = args?.refresh === true;
+
+      if (!doctype) {
+        throw new McpError(ErrorCode.InvalidParams, "Doctype is required");
+      }
+
+      try {
+        const schema = await doctypeCache.get(
+          doctype,
+          refresh && erpnext.isAuthenticated()
+        );
+        return textResult(JSON.stringify(schema, null, 2));
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return textResult(`Failed to get schema for ${doctype}: ${message}`, true);
+      }
+    }
+
+    case "list_doctype_schemas": {
+      try {
+        const doctypes = await doctypeCache.list();
+        return textResult(JSON.stringify({ doctypes }, null, 2));
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return textResult(`Failed to list cached schemas: ${message}`, true);
       }
     }
 

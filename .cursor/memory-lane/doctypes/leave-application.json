@@ -1,0 +1,28 @@
+{
+  "doctype": "Leave Application",
+  "keyFields": [
+    "name",
+    "employee",
+    "employee_name",
+    "leave_type",
+    "company",
+    "department",
+    "from_date",
+    "to_date",
+    "half_day",
+    "half_day_date",
+    "leave_approver",
+    "follow_via_email",
+    "posting_date",
+    "letter_head",
+    "status",
+    "description",
+    "docstatus"
+  ],
+  "commonFilters": ["employee", "status", "leave_type", "from_date", "to_date"],
+  "notes": "Default status Open for drafts. naming_series HR-LAP-.YYYY.-",
+  "_meta": {
+    "cachedAt": "",
+    "source": "manual"
+  }
+}

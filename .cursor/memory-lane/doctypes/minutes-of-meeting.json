@@ -1,0 +1,19 @@
+{
+  "doctype": "Minutes of Meeting",
+  "keyFields": [
+    "name",
+    "date_of_meeting",
+    "meeting_subject",
+    "recorded_by",
+    "department",
+    "project",
+    "small_text_afux",
+    "discussion"
+  ],
+  "commonFilters": ["department", "project", "date_of_meeting", "recorded_by"],
+  "notes": "small_text_afux = attendees/topic header HTML; discussion = body HTML (Quill).",
+  "_meta": {
+    "cachedAt": "",
+    "source": "manual"
+  }
+}
