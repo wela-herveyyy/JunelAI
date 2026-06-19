@@ -1,0 +1,25 @@
+{
+  "name": "submit_document",
+  "description": "Submit a document (set docstatus to 1). Only works on submittable doctypes. Submitted documents can only be cancelled, not reverted to draft.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Sales Invoice, Journal Entry)"
+      },
+      "name": {
+        "type": "string",
+        "description": "Document name/ID"
+      },
+      "verbose": {
+        "type": "boolean",
+        "description": "If true, return the full document in the response. Default is false (returns minimal confirmation only)."
+      }
+    },
+    "required": [
+      "doctype",
+      "name"
+    ]
+  }
+}

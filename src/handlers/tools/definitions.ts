@@ -132,6 +132,34 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "note_document",
+    description: "Add a timeline note to an ERPNext document.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        doctype: {
+          type: "string",
+          description: "ERPNext DocType (e.g., Customer, Item)",
+        },
+        name: {
+          type: "string",
+          description: "Document name/ID",
+        },
+        data: {
+          type: "object",
+          additionalProperties: true,
+          description: "Note payload with message (required). Optional: author_name, author_email.",
+        },
+        verbose: {
+          type: "boolean",
+          description:
+            "If true, return the full API response. Default is false (minimal confirmation).",
+        },
+      },
+      required: ["doctype", "name", "data"],
+    },
+  },
+  {
     name: "run_report",
     description: "Run an ERPNext report",
     inputSchema: {
@@ -172,7 +200,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: "call_method",
     description:
-      "Call an ERPNext/Frappe whitelisted server-side API method. Can invoke any whitelisted method — use with caution. Args are passed as JSON body (POST) or query params (GET).",
+      "Call an ERPNext/Frappe whitelisted server-side API method. For timeline notes on documents, prefer note_document. Do not pass nested doc objects to frappe.desk.form.utils.add_comment.",
     inputSchema: {
       type: "object",
       properties: {
@@ -245,6 +273,25 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "delete_document",
+    description:
+      "Permanently delete a document from ERPNext. This action cannot be undone. Submitted documents must be cancelled before deletion.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        doctype: {
+          type: "string",
+          description: "ERPNext DocType",
+        },
+        name: {
+          type: "string",
+          description: "Document name/ID",
+        },
+      },
+      required: ["doctype", "name"],
+    },
+  },
+  {
     name: "get_user_profile",
     description:
       "Get the logged-in user profile (full name, position, work email, company, department, ERPNext user, employee). Syncs from ERPNext Employee/User records when authenticated. Call this first before other ERPNext workflows.",
@@ -280,29 +327,16 @@ export const TOOL_DEFINITIONS = [
   {
     name: "check_auth",
     description:
-      "Check ERPNext MCP authentication status (session validity, logged-in user, auth method)",
-    inputSchema: {
-      type: "object",
-      properties: {},
-    },
-  },
-  {
-    name: "delete_document",
-    description:
-      "Permanently delete a document from ERPNext. This action cannot be undone. Submitted documents must be cancelled before deletion.",
+      "Explicitly verify ERPNext session with a live API call. Do NOT call this before every workflow — auth is lazy and auto-retries on errors. Use only when the user asks, or after a session-expired error.",
     inputSchema: {
       type: "object",
       properties: {
-        doctype: {
-          type: "string",
-          description: "ERPNext DocType",
-        },
-        name: {
-          type: "string",
-          description: "Document name/ID",
+        verify: {
+          type: "boolean",
+          description:
+            "If true (default), hit ERPNext to confirm the session. If false, return cached session config only.",
         },
       },
-      required: ["doctype", "name"],
     },
   },
 ] as const;

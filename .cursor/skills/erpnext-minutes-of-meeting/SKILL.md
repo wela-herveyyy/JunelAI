@@ -24,9 +24,8 @@ Create Livro **Minutes of Meeting** records using **only** the `user-erpnext` MC
 
 1. **`get_user_profile`** — `fullName`, `position`, `workEmail`, `department`.
 2. **`update_user_profile`** — if user gave new identity facts.
-3. **`check_auth`** — stop if not authenticated.
-4. **`get_doctype_schema`** for `Minutes of Meeting` — or [minutes-of-meeting.json](../../memory-lane/doctypes/minutes-of-meeting.json).
-5. Gather **meeting-specific** only (profile covers recorder/department):
+3. **`get_doctype_schema`** for `Minutes of Meeting` — or [minutes-of-meeting.json](../../memory-lane/doctypes/minutes-of-meeting.json).
+4. Gather **meeting-specific** only (profile covers recorder/department):
    - `date_of_meeting`, `meeting_subject`, optional `project`
    - Attendees, discussion body
 6. Build HTML per [template.md](template.md) — include **`profile.fullName`** in attendees if they attended.

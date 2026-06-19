@@ -8,6 +8,7 @@ import { loadCredentialsIntoEnv } from "./config/credentials.js";
 import { AUTH_SETUP_HINT, SERVER_NAME } from "./constants.js";
 import { registerResourceHandlers } from "./handlers/resources.js";
 import { registerToolHandlers } from "./handlers/tools/index.js";
+import { getActiveToolDefinitions } from "./handlers/tools/filter.js";
 import { UserProfileManager } from "./profile/index.js";
 import { DocTypeCacheManager } from "./doctype-cache/index.js";
 import { createLogger } from "./utils/logger.js";
@@ -63,5 +64,7 @@ export async function startServer(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("ERPNext MCP server running on stdio");
+  logger.info(
+    `ERPNext MCP server running on stdio (${getActiveToolDefinitions().length} tools)`
+  );
 }

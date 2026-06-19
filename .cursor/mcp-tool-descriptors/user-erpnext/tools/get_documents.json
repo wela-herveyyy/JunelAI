@@ -1,0 +1,32 @@
+{
+  "name": "get_documents",
+  "description": "Get a list of documents for a specific doctype",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Customer, Item)"
+      },
+      "fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Fields to include (optional)"
+      },
+      "filters": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Filters in the format {field: value} (optional)"
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of documents to return (optional)"
+      }
+    },
+    "required": [
+      "doctype"
+    ]
+  }
+}

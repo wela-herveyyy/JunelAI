@@ -1,0 +1,31 @@
+{
+  "name": "note_document",
+  "description": "Add a timeline note to an ERPNext document.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Customer, Item)"
+      },
+      "name": {
+        "type": "string",
+        "description": "Document name/ID"
+      },
+      "data": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Note payload with message (required). Optional: author_name, author_email."
+      },
+      "verbose": {
+        "type": "boolean",
+        "description": "If true, return the full API response. Default is false (minimal confirmation)."
+      }
+    },
+    "required": [
+      "doctype",
+      "name",
+      "data"
+    ]
+  }
+}

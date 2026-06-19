@@ -1,6 +1,9 @@
+import { readFile } from "node:fs/promises";
 import axios, { AxiosInstance } from "axios";
 import { AUTH_SETUP_HINT, FALLBACK_DOCTYPES } from "../constants.js";
-import { detectAuthMethod } from "../config/credentials.js";
+import { detectAuthMethod, loadCredentialsIntoEnv } from "../config/credentials.js";
+import { resolveCsrfToken } from "./csrf.js";
+import { formatFrappeError, isAuthError, isCsrfError, isNetworkError, parseFrappeMethodResponse } from "./frappe-errors.js";
 import type { Logger } from "../utils/logger.js";
 
 export class ERPNextClient {
@@ -25,6 +28,7 @@ export class ERPNextClient {
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
+      timeout: 120_000,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -65,14 +69,7 @@ export class ERPNextClient {
   async initializeAuth(): Promise<void> {
     this.lastAuthError = null;
 
-    if (this.authenticated) {
-      if (this.authMethod === "api_key") {
-        try {
-          await this.refreshLoggedUser();
-        } catch (error: unknown) {
-          this.recordAuthFailure("api_key", error);
-        }
-      }
+    if (this.authenticated && this.authMethod === "api_key") {
       return;
     }
 
@@ -82,24 +79,18 @@ export class ERPNextClient {
     const cookie = process.env.ERPNEXT_COOKIE;
 
     if (sid) {
-      try {
-        await this.loginWithSid(sid);
-      } catch (error: unknown) {
-        this.recordAuthFailure("sid", error);
-      }
+      this.applySidSession(sid);
+      this.authenticated = true;
+      await this.loadCachedSessionHint();
       return;
     }
 
     if (cookie) {
-      try {
-        this.applyCookieString(cookie);
-        await this.refreshCsrfToken();
-        this.authenticated = true;
-        this.authMethod = "cookie";
-        await this.refreshLoggedUser();
-      } catch (error: unknown) {
-        this.recordAuthFailure("cookie", error);
-      }
+      this.applyCookieString(cookie);
+      await this.refreshCsrfToken();
+      this.authenticated = true;
+      this.authMethod = "cookie";
+      await this.loadCachedSessionHint();
       return;
     }
 
@@ -109,6 +100,63 @@ export class ERPNextClient {
       } catch (error: unknown) {
         this.recordAuthFailure("password", error);
       }
+    }
+  }
+
+  private applySidSession(sid: string): void {
+    this.cookies.sid = sid;
+    this.authMethod = "sid";
+    const envCsrf = process.env.ERPNEXT_CSRF_TOKEN;
+    if (envCsrf) {
+      this.csrfToken = envCsrf;
+    }
+  }
+
+  private async loadCachedSessionHint(): Promise<void> {
+    const path = this.credentialsFile;
+    if (!path) {
+      return;
+    }
+
+    try {
+      const raw = await readFile(path, "utf8");
+      const data = JSON.parse(raw) as {
+        _meta?: { loggedUser?: string };
+      };
+      if (data._meta?.loggedUser) {
+        this.loggedUser = data._meta.loggedUser;
+      }
+    } catch {
+      // optional hint only
+    }
+  }
+
+  async reloadSessionFromDisk(): Promise<boolean> {
+    await loadCredentialsIntoEnv({ refreshSession: true });
+
+    const sid = process.env.ERPNEXT_SID;
+    if (sid) {
+      this.applySidSession(sid);
+    }
+
+    const cookie = process.env.ERPNEXT_COOKIE;
+    if (cookie) {
+      this.applyCookieString(cookie);
+      this.authMethod = "cookie";
+    }
+
+    delete process.env.ERPNEXT_CSRF_TOKEN;
+    this.csrfToken = "";
+    await this.refreshCsrfToken(true);
+
+    try {
+      await this.refreshLoggedUser();
+      this.authenticated = true;
+      return true;
+    } catch {
+      this.authenticated = false;
+      this.loggedUser = "";
+      return false;
     }
   }
 
@@ -153,23 +201,96 @@ export class ERPNextClient {
     }
   }
 
-  private async refreshCsrfToken(): Promise<void> {
-    const envCsrf = process.env.ERPNEXT_CSRF_TOKEN;
-    if (envCsrf) {
-      this.csrfToken = envCsrf;
-      return;
+  private async refreshCsrfToken(force = false): Promise<void> {
+    if (!force) {
+      const envCsrf = process.env.ERPNEXT_CSRF_TOKEN;
+      if (envCsrf) {
+        this.csrfToken = envCsrf;
+        return;
+      }
     }
 
-    try {
-      const response = await this.axiosInstance.get(
-        "/api/method/frappe.sessions.get_csrf_token"
+    const token = await resolveCsrfToken(
+      this.axiosInstance,
+      force ? undefined : process.env.ERPNEXT_CSRF_TOKEN
+    );
+    if (token) {
+      this.csrfToken = token;
+    }
+  }
+
+  private async ensureWriteAuth(forceCsrf = false): Promise<void> {
+    const token = await resolveCsrfToken(
+      this.axiosInstance,
+      forceCsrf ? undefined : process.env.ERPNEXT_CSRF_TOKEN
+    );
+    if (token) {
+      this.csrfToken = token;
+    } else if (!this.csrfToken) {
+      throw new Error(
+        `Could not resolve CSRF token for write operations. ${AUTH_SETUP_HINT}`
       );
-      const token = response.data?.message;
-      if (typeof token === "string" && token) {
-        this.csrfToken = token;
+    }
+  }
+
+  private async withRequestRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      if (isNetworkError(error)) {
+        this.logger.warn("ERPNext network error — retrying once");
+        await this.delay(1500);
+        return await fn();
       }
-    } catch {
-      // GET requests still work without CSRF; writes may fail until re-login.
+
+      if (!isAuthError(error)) {
+        throw error;
+      }
+
+      this.logger.warn("ERPNext auth error — reloading session from credentials file");
+      const reloaded = await this.reloadSessionFromDisk();
+      if (!reloaded) {
+        throw new Error(`Session expired. ${AUTH_SETUP_HINT}`);
+      }
+
+      return await fn();
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async withWriteRetry<T>(fn: () => Promise<T>): Promise<T> {
+    await this.ensureWriteAuth();
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      if (isNetworkError(error)) {
+        this.logger.warn("ERPNext write network error — retrying once");
+        await this.delay(1500);
+        await this.ensureWriteAuth(true);
+        return await fn();
+      }
+
+      if (isCsrfError(error)) {
+        delete process.env.ERPNEXT_CSRF_TOKEN;
+        this.csrfToken = "";
+        await this.ensureWriteAuth(true);
+        return await fn();
+      }
+
+      if (isAuthError(error)) {
+        this.logger.warn("ERPNext write auth error — reloading session");
+        const reloaded = await this.reloadSessionFromDisk();
+        if (!reloaded) {
+          throw new Error(`Session expired. ${AUTH_SETUP_HINT}`);
+        }
+        await this.ensureWriteAuth(true);
+        return await fn();
+      }
+
+      throw error;
     }
   }
 
@@ -196,11 +317,7 @@ export class ERPNextClient {
   }
 
   async loginWithSid(sid: string): Promise<void> {
-    this.cookies.sid = sid;
-    const envCsrf = process.env.ERPNEXT_CSRF_TOKEN;
-    if (envCsrf) {
-      this.csrfToken = envCsrf;
-    }
+    this.applySidSession(sid);
     await this.refreshCsrfToken();
 
     try {
@@ -227,15 +344,32 @@ export class ERPNextClient {
     this.loggedUser = user;
   }
 
-  async getAuthStatus(): Promise<Record<string, unknown>> {
+  async getAuthStatus(
+    options: { verify?: boolean } = {}
+  ): Promise<Record<string, unknown>> {
+    const verify = options.verify === true;
+
     if (!this.authenticated) {
       return {
         authenticated: false,
         authMethod: this.authMethod !== "none" ? this.authMethod : detectAuthMethod(),
         loggedUser: null,
         credentialsFile: this.credentialsFile,
+        verified: false,
         message:
           this.lastAuthError ?? `Not authenticated. ${AUTH_SETUP_HINT}`,
+      };
+    }
+
+    if (!verify) {
+      return {
+        authenticated: true,
+        authMethod: this.authMethod,
+        loggedUser: this.loggedUser || null,
+        credentialsFile: this.credentialsFile,
+        verified: false,
+        message:
+          "Session configured (lazy mode — not verified until check_auth with verify or on API error).",
       };
     }
 
@@ -246,6 +380,7 @@ export class ERPNextClient {
         authMethod: this.authMethod,
         loggedUser: this.loggedUser,
         credentialsFile: this.credentialsFile,
+        verified: true,
         message: "Session is valid.",
       };
     } catch (error: unknown) {
@@ -259,9 +394,18 @@ export class ERPNextClient {
         authMethod: this.authMethod,
         loggedUser: null,
         credentialsFile: this.credentialsFile,
+        verified: true,
         message,
       };
     }
+  }
+
+  hasCredentialsConfigured(): boolean {
+    return (
+      this.authenticated ||
+      detectAuthMethod() !== "none" ||
+      Boolean(process.env.ERPNEXT_URL && process.env.ERPNEXT_SID)
+    );
   }
 
   isAuthenticated(): boolean {
@@ -274,13 +418,16 @@ export class ERPNextClient {
 
   async getDocument(doctype: string, name: string): Promise<Record<string, unknown>> {
     try {
-      const response = await this.axiosInstance.get(
-        `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`
-      );
-      return response.data.data;
+      return await this.withRequestRetry(async () => {
+        const response = await this.axiosInstance.get(
+          `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`
+        );
+        return response.data.data;
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to get ${doctype} ${name}: ${message}`);
+      throw new Error(
+        formatFrappeError(error, `Failed to get ${doctype} ${name}`)
+      );
     }
   }
 
@@ -291,26 +438,27 @@ export class ERPNextClient {
     limit?: number
   ): Promise<Record<string, unknown>[]> {
     try {
-      const params: Record<string, unknown> = {};
+      return await this.withRequestRetry(async () => {
+        const params: Record<string, unknown> = {};
 
-      if (fields?.length) {
-        params.fields = JSON.stringify(fields);
-      }
-      if (filters) {
-        params.filters = JSON.stringify(filters);
-      }
-      if (limit) {
-        params.limit_page_length = limit;
-      }
+        if (fields?.length) {
+          params.fields = JSON.stringify(fields);
+        }
+        if (filters) {
+          params.filters = JSON.stringify(filters);
+        }
+        if (limit) {
+          params.limit_page_length = limit;
+        }
 
-      const response = await this.axiosInstance.get(
-        `/api/resource/${encodeURIComponent(doctype)}`,
-        { params }
-      );
-      return response.data.data;
+        const response = await this.axiosInstance.get(
+          `/api/resource/${encodeURIComponent(doctype)}`,
+          { params }
+        );
+        return response.data.data;
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to get ${doctype} list: ${message}`);
+      throw new Error(formatFrappeError(error, `Failed to get ${doctype} list`));
     }
   }
 
@@ -319,14 +467,15 @@ export class ERPNextClient {
     doc: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     try {
-      const response = await this.axiosInstance.post(
-        `/api/resource/${encodeURIComponent(doctype)}`,
-        { data: doc }
-      );
-      return response.data.data;
+      return await this.withWriteRetry(async () => {
+        const response = await this.axiosInstance.post(
+          `/api/resource/${encodeURIComponent(doctype)}`,
+          { data: doc }
+        );
+        return response.data.data;
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to create ${doctype}: ${message}`);
+      throw new Error(formatFrappeError(error, `Failed to create ${doctype}`));
     }
   }
 
@@ -336,14 +485,17 @@ export class ERPNextClient {
     doc: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     try {
-      const response = await this.axiosInstance.put(
-        `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
-        { data: doc }
-      );
-      return response.data.data;
+      return await this.withWriteRetry(async () => {
+        const response = await this.axiosInstance.put(
+          `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+          { data: doc }
+        );
+        return response.data.data;
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to update ${doctype} ${name}: ${message}`);
+      throw new Error(
+        formatFrappeError(error, `Failed to update ${doctype} ${name}`)
+      );
     }
   }
 
@@ -352,19 +504,22 @@ export class ERPNextClient {
     filters?: Record<string, unknown>
   ): Promise<unknown> {
     try {
-      const response = await this.axiosInstance.get(
-        "/api/method/frappe.desk.query_report.run",
-        {
-          params: {
-            report_name: reportName,
-            filters: filters ? JSON.stringify(filters) : undefined,
-          },
-        }
-      );
-      return response.data.message;
+      return await this.withRequestRetry(async () => {
+        const response = await this.axiosInstance.get(
+          "/api/method/frappe.desk.query_report.run",
+          {
+            params: {
+              report_name: reportName,
+              filters: filters ? JSON.stringify(filters) : undefined,
+            },
+          }
+        );
+        return response.data.message;
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to run report ${reportName}: ${message}`);
+      throw new Error(
+        formatFrappeError(error, `Failed to run report ${reportName}`)
+      );
     }
   }
 
@@ -378,27 +533,94 @@ export class ERPNextClient {
         .split(".")
         .map(encodeURIComponent)
         .join(".");
-      const response =
-        httpMethod === "GET"
-          ? await this.axiosInstance.get(`/api/method/${encodedMethod}`, {
-              params: args,
-            })
-          : await this.axiosInstance.post(`/api/method/${encodedMethod}`, args);
-      return response.data.message;
+      if (httpMethod === "GET") {
+        return await this.withRequestRetry(async () => {
+          const response = await this.axiosInstance.get(
+            `/api/method/${encodedMethod}`,
+            { params: args }
+          );
+          return parseFrappeMethodResponse(response.data);
+        });
+      }
+
+      return await this.withWriteRetry(async () => {
+        const response = await this.axiosInstance.post(
+          `/api/method/${encodedMethod}`,
+          args ?? {}
+        );
+        return parseFrappeMethodResponse(response.data);
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to call method ${method}: ${message}`);
+      throw new Error(formatFrappeError(error, `Failed to call method ${method}`));
+    }
+  }
+
+  async addDocumentComment(params: {
+    reference_doctype: string;
+    reference_name: string;
+    content: string;
+    comment_email: string;
+    comment_by: string;
+  }): Promise<Record<string, unknown>> {
+    const {
+      reference_doctype: referenceDoctype,
+      reference_name: referenceName,
+      content,
+      comment_email: commentEmail,
+      comment_by: commentBy,
+    } = params;
+
+    if (!referenceDoctype || !referenceName || !content?.trim()) {
+      throw new Error(
+        "reference_doctype, reference_name, and content are required for add_document_comment"
+      );
+    }
+
+    if (!commentEmail || !commentBy) {
+      throw new Error("comment_email and comment_by are required for add_document_comment");
+    }
+
+    try {
+      await this.getDocument(referenceDoctype, referenceName);
+    } catch (error: unknown) {
+      throw new Error(
+        formatFrappeError(
+          error,
+          `${referenceDoctype} ${referenceName} not found or not accessible`
+        )
+      );
+    }
+
+    try {
+      const result = await this.callMethod("frappe.desk.form.utils.add_comment", {
+        reference_doctype: referenceDoctype,
+        reference_name: referenceName,
+        content,
+        comment_email: commentEmail,
+        comment_by: commentBy,
+      });
+
+      if (result && typeof result === "object") {
+        return result as Record<string, unknown>;
+      }
+
+      throw new Error("add_comment returned an empty response");
+    } catch (error: unknown) {
+      throw new Error(formatFrappeError(error, "Failed to add document comment"));
     }
   }
 
   async deleteDocument(doctype: string, name: string): Promise<void> {
     try {
-      await this.axiosInstance.delete(
-        `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`
-      );
+      await this.withWriteRetry(async () => {
+        await this.axiosInstance.delete(
+          `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`
+        );
+      });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Failed to delete ${doctype} ${name}: ${message}`);
+      throw new Error(
+        formatFrappeError(error, `Failed to delete ${doctype} ${name}`)
+      );
     }
   }
 

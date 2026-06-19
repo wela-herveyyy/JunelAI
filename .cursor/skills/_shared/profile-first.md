@@ -65,8 +65,21 @@ Prefer MCP `update_user_profile` when the server is connected.
 ## Skill order (always)
 
 ```
-get_user_profile → get_doctype_schema (if querying a DocType) → update_user_profile (if needed) → check_auth → skill tools
+get_user_profile → get_doctype_schema (if needed) → update_user_profile (if needed) → skill tools
 ```
+
+**Do not call `check_auth` before every workflow.** Auth is lazy: the MCP server uses the saved session and only re-validates when ERPNext returns an auth error. Call `check_auth` only if the user asks or after a session-expired failure.
+
+## Auth errors (agent recovery)
+
+If a tool returns session expired / 401 / 403:
+
+1. Ask the user to copy the `sid` cookie from ERPNext DevTools (or copy to clipboard).
+2. Run: `npm run refresh-auth -- --sid "PASTED_SID" --json` (or `--clipboard --json`).
+3. Tell the user to restart the ERPNext MCP server in Cursor.
+4. Retry the failed operation.
+
+See `.cursor/skills/_shared/auth-lazy.md` for full instructions.
 
 ## Reply tone
 

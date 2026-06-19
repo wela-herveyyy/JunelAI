@@ -1,0 +1,21 @@
+{
+  "name": "run_report",
+  "description": "Run an ERPNext report",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "report_name": {
+        "type": "string",
+        "description": "Name of the report"
+      },
+      "filters": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Report filters (optional)"
+      }
+    },
+    "required": [
+      "report_name"
+    ]
+  }
+}

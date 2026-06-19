@@ -68,7 +68,7 @@ Schema is cached automatically — later sessions skip ERPNext meta fetch.
 ## Skill integration order
 
 ```
-get_user_profile → get_doctype_schema → check_auth → get_documents / create_document
+get_user_profile → get_doctype_schema → get_documents / create_document
 ```
 
 ## Domain skill links

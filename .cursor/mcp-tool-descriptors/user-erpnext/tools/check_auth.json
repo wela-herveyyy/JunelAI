@@ -1,0 +1,13 @@
+{
+  "name": "check_auth",
+  "description": "Explicitly verify ERPNext session with a live API call. Do NOT call this before every workflow — auth is lazy and auto-retries on errors. Use only when the user asks, or after a session-expired error.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "verify": {
+        "type": "boolean",
+        "description": "If true (default), hit ERPNext to confirm the session. If false, return cached session config only."
+      }
+    }
+  }
+}

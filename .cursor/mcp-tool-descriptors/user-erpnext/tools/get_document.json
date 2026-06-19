@@ -1,0 +1,21 @@
+{
+  "name": "get_document",
+  "description": "Get a single document by DocType and name, including all child tables and linked data",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Customer, Sales Order, BOM)"
+      },
+      "name": {
+        "type": "string",
+        "description": "Document name/ID"
+      }
+    },
+    "required": [
+      "doctype",
+      "name"
+    ]
+  }
+}

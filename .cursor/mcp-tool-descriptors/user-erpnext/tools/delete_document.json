@@ -1,0 +1,21 @@
+{
+  "name": "delete_document",
+  "description": "Permanently delete a document from ERPNext. This action cannot be undone. Submitted documents must be cancelled before deletion.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType"
+      },
+      "name": {
+        "type": "string",
+        "description": "Document name/ID"
+      }
+    },
+    "required": [
+      "doctype",
+      "name"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "get_user_profile",
+  "description": "Get the logged-in user profile (full name, position, work email, company, department, ERPNext user, employee). Syncs from ERPNext Employee/User records when authenticated. Call this first before other ERPNext workflows.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "sync": {
+        "type": "boolean",
+        "description": "If true (default), refresh profile from ERPNext before returning"
+      }
+    }
+  }
+}

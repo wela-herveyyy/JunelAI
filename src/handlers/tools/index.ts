@@ -6,7 +6,7 @@ import {
 import type { ERPNextClient } from "../../client/erpnext-client.js";
 import type { DocTypeCacheManager } from "../../doctype-cache/index.js";
 import type { UserProfileManager } from "../../profile/index.js";
-import { TOOL_DEFINITIONS } from "./definitions.js";
+import { getActiveToolDefinitions } from "./filter.js";
 import { handleToolCall } from "./handlers.js";
 
 export function registerToolHandlers(
@@ -16,7 +16,7 @@ export function registerToolHandlers(
   doctypeCache: DocTypeCacheManager
 ): void {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOL_DEFINITIONS.map((tool) => ({ ...tool })),
+    tools: getActiveToolDefinitions().map((tool) => ({ ...tool })),
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) =>

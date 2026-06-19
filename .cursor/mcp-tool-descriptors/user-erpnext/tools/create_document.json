@@ -1,0 +1,26 @@
+{
+  "name": "create_document",
+  "description": "Create a new document in ERPNext",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Customer, Item)"
+      },
+      "data": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Document data"
+      },
+      "verbose": {
+        "type": "boolean",
+        "description": "If true, return the full document in the response. Default is false (returns minimal confirmation only)."
+      }
+    },
+    "required": [
+      "doctype",
+      "data"
+    ]
+  }
+}

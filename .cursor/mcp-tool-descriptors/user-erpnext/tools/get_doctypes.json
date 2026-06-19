@@ -1,0 +1,8 @@
+{
+  "name": "get_doctypes",
+  "description": "Get a list of all available DocTypes",
+  "arguments": {
+    "type": "object",
+    "properties": {}
+  }
+}

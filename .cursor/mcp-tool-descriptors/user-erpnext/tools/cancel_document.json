@@ -1,0 +1,25 @@
+{
+  "name": "cancel_document",
+  "description": "Cancel a submitted document (set docstatus to 2). Cancelled documents cannot be modified — use amend workflow to create a corrected copy.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType"
+      },
+      "name": {
+        "type": "string",
+        "description": "Document name/ID"
+      },
+      "verbose": {
+        "type": "boolean",
+        "description": "If true, return the full document in the response. Default is false (returns minimal confirmation only)."
+      }
+    },
+    "required": [
+      "doctype",
+      "name"
+    ]
+  }
+}

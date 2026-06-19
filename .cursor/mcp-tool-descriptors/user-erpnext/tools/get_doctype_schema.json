@@ -1,0 +1,20 @@
+{
+  "name": "get_doctype_schema",
+  "description": "Get cached DocType schema (fields, types, sample). Fetches from ERPNext on first access or when refresh=true, then stores in ~/.erpnext-mcp/doctypes/ for reuse. Prefer this over get_doctype_fields for query building.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Livro Task, Leave Application)"
+      },
+      "refresh": {
+        "type": "boolean",
+        "description": "If true, re-fetch from ERPNext and update cache (default: false)"
+      }
+    },
+    "required": [
+      "doctype"
+    ]
+  }
+}

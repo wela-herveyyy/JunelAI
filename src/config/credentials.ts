@@ -3,7 +3,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { CREDENTIAL_ENV_KEYS } from "../constants.js";
 
-export async function loadCredentialsIntoEnv(): Promise<string | null> {
+const SESSION_KEYS = ["ERPNEXT_SID", "ERPNEXT_CSRF_TOKEN", "ERPNEXT_COOKIE"] as const;
+
+export async function loadCredentialsIntoEnv(
+  options: { refreshSession?: boolean } = {}
+): Promise<string | null> {
   const credentialsPath =
     process.env.ERPNEXT_CREDENTIALS_FILE ||
     join(homedir(), ".erpnext-mcp", "credentials.json");
@@ -13,8 +17,18 @@ export async function loadCredentialsIntoEnv(): Promise<string | null> {
     const data = JSON.parse(raw) as Record<string, string>;
 
     for (const key of CREDENTIAL_ENV_KEYS) {
-      if (!process.env[key] && typeof data[key] === "string" && data[key]) {
-        process.env[key] = data[key];
+      const value = data[key];
+      if (typeof value !== "string" || !value) {
+        continue;
+      }
+
+      const isSessionKey = SESSION_KEYS.includes(
+        key as (typeof SESSION_KEYS)[number]
+      );
+      if (options.refreshSession && isSessionKey) {
+        process.env[key] = value;
+      } else if (!process.env[key]) {
+        process.env[key] = value;
       }
     }
 

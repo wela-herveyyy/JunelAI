@@ -1,0 +1,41 @@
+{
+  "name": "update_user_profile",
+  "description": "Update local user profile fields. ERPNext-synced fields can be overridden here. Accepts fullName, position, workEmail, company, department, timezone, dateFormat, notes (snake_case aliases also accepted).",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "fullName": {
+        "type": "string",
+        "description": "Full name"
+      },
+      "position": {
+        "type": "string",
+        "description": "Job title / designation"
+      },
+      "workEmail": {
+        "type": "string",
+        "description": "Work email address"
+      },
+      "company": {
+        "type": "string",
+        "description": "Company name"
+      },
+      "department": {
+        "type": "string",
+        "description": "Department"
+      },
+      "timezone": {
+        "type": "string",
+        "description": "IANA timezone"
+      },
+      "dateFormat": {
+        "type": "string",
+        "description": "Preferred date format"
+      },
+      "notes": {
+        "type": "string",
+        "description": "Free-form notes"
+      }
+    }
+  }
+}

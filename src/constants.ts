@@ -1,7 +1,7 @@
 export const SERVER_NAME = "erpnext-mcp-server";
 
 export const AUTH_SETUP_HINT =
-  "Run setup-sid to refresh your ERPNext browser session (npm run setup-sid from source).";
+  "Session expired. Run: npm run refresh-auth (paste sid in chat for the agent to run refresh-auth -- --sid YOUR_SID --json). Full setup: npm run setup-sid";
 
 export const CREDENTIAL_ENV_KEYS = [
   "ERPNEXT_URL",

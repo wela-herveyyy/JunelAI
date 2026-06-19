@@ -13,6 +13,14 @@ scripts/drafts/
 # User profile memory (local only)
 .cursor/memory-lane/user-profile.md
 
+# Installed skill copies (source: .cursor/skills/)
+.claude/skills/
+.claude/memory-lane/
+.gemini/skills/
+.gemini/memory-lane/
+.opencode/skills/
+.opencode/memory-lane/
+
 # OS / editor
 .DS_Store
 Thumbs.db

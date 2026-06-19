@@ -24,9 +24,8 @@ Retrieve and summarize **Salary Slip** data using **only** the `user-erpnext` MC
 
 1. **`get_user_profile`** — `employeeId`, `fullName`, `position`, `department`, `company`, `erpnextUser`.
 2. **`update_user_profile`** — if user shared identity corrections.
-3. **`check_auth`** — scope to `loggedUser` = `profile.erpnextUser`.
-4. **`get_doctype_schema`** for `Salary Slip` — or [salary-slip.json](../../memory-lane/doctypes/salary-slip.json).
-5. If `employeeId` empty → **`get_documents`** Employee by `profile.erpnextUser`; sync profile via `update_user_profile`.
+3. **`get_doctype_schema`** for `Salary Slip` — or [salary-slip.json](../../memory-lane/doctypes/salary-slip.json).
+4. If `employeeId` empty → **`get_documents`** Employee by `profile.erpnextUser`; sync profile via `update_user_profile`.
 6. Determine payslip scope (latest, N slips, year, range).
 7. **`get_documents`** Salary Slips — `filters: { "employee": "<profile.employeeId>" }`.
 8. **`get_document`** for breakdown when needed.

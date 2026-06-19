@@ -77,7 +77,7 @@ export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} 
     mcpServers: {
       erpnext: {
         command: 'node',
-        args: [serverPath],
+        args: [serverPath.replace(/\\/g, '/')],
         env: mergedEnv,
       },
     },

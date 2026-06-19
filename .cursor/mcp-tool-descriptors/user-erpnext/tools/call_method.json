@@ -1,0 +1,29 @@
+{
+  "name": "call_method",
+  "description": "Call an ERPNext/Frappe whitelisted server-side API method. For timeline notes on documents, prefer note_document. Do not pass nested doc objects to frappe.desk.form.utils.add_comment.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "description": "Dotted method path (e.g., frappe.client.get_count, erpnext.manufacturing.doctype.work_order.work_order.make_stock_entry)"
+      },
+      "args": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Method arguments as key-value pairs (optional)"
+      },
+      "http_method": {
+        "type": "string",
+        "enum": [
+          "GET",
+          "POST"
+        ],
+        "description": "HTTP method to use (default: POST). Use GET for read-only methods."
+      }
+    },
+    "required": [
+      "method"
+    ]
+  }
+}

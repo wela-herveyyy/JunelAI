@@ -1,0 +1,16 @@
+{
+  "name": "get_doctype_fields",
+  "description": "Get fields list for a DocType from a sample document. Prefer get_doctype_schema for cached/reusable structure.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "doctype": {
+        "type": "string",
+        "description": "ERPNext DocType (e.g., Customer, Item)"
+      }
+    },
+    "required": [
+      "doctype"
+    ]
+  }
+}

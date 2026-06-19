@@ -1,0 +1,8 @@
+{
+  "name": "list_doctype_schemas",
+  "description": "List DocTypes that have a cached schema in ~/.erpnext-mcp/doctypes/",
+  "arguments": {
+    "type": "object",
+    "properties": {}
+  }
+}

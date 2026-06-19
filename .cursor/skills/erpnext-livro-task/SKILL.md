@@ -32,8 +32,7 @@ Do not use the separate `Product Backlog` doctype (often permission-blocked).
 
 1. **`get_user_profile`** — `erpnextUser`, `workEmail`, `fullName`, `department`, `position`.
 2. **`update_user_profile`** — if user corrected identity this turn.
-3. **`check_auth`** — `loggedUser` must match `profile.erpnextUser`.
-4. **`get_doctype_schema`** for `Livro Task` — or read [livro-task.json](../../memory-lane/doctypes/livro-task.json). Use `listFields` / `commonFilters` for queries.
+3. **`get_doctype_schema`** for `Livro Task` — or read [livro-task.json](../../memory-lane/doctypes/livro-task.json). Use `listFields` / `commonFilters` for queries.
 5. Pick intent from [queries.md](queries.md) — **every "my" filter uses profile**.
 6. Reply addressing **`profile.fullName`** with task links.
 

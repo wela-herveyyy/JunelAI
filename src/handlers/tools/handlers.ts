@@ -81,7 +81,8 @@ export async function handleToolCall(
 
   if (name === "check_auth") {
     try {
-      const status = await erpnext.getAuthStatus();
+      const verify = args?.verify !== false;
+      const status = await erpnext.getAuthStatus({ verify });
       return textResult(JSON.stringify(status, null, 2), !status.authenticated);
     } catch (error: unknown) {
       const message =
@@ -93,9 +94,9 @@ export async function handleToolCall(
     }
   }
 
-  if (!erpnext.isAuthenticated()) {
+  if (!erpnext.hasCredentialsConfigured()) {
     return textResult(
-      `Not authenticated with ERPNext. ${AUTH_SETUP_HINT} Or configure API keys / ERPNEXT_CREDENTIALS_FILE.`,
+      `No ERPNext credentials configured. ${AUTH_SETUP_HINT}`,
       true
     );
   }
@@ -226,12 +227,109 @@ export async function handleToolCall(
         throw new McpError(ErrorCode.InvalidParams, "Method is required");
       }
 
+      if (method === "frappe.desk.form.utils.add_comment") {
+        if (methodArgs?.doc) {
+          return textResult(
+            "Invalid add_comment args: do not pass a nested `doc` object (causes socket hang up). Use note_document with doctype, name, and data: { message, author_name?, author_email? }.",
+            true
+          );
+        }
+
+        const referenceDoctype = String(methodArgs?.reference_doctype ?? "");
+        const referenceName = String(methodArgs?.reference_name ?? "");
+        const content = String(methodArgs?.content ?? "");
+        const commentEmail = String(methodArgs?.comment_email ?? "");
+        const commentBy = String(methodArgs?.comment_by ?? "");
+
+        if (
+          referenceDoctype &&
+          referenceName &&
+          content &&
+          commentEmail &&
+          commentBy
+        ) {
+          try {
+            const result = await erpnext.addDocumentComment({
+              reference_doctype: referenceDoctype,
+              reference_name: referenceName,
+              content,
+              comment_email: commentEmail,
+              comment_by: commentBy,
+            });
+            return textResult(JSON.stringify(result, null, 2));
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            return textResult(`Failed to add document comment: ${message}`, true);
+          }
+        }
+      }
+
       try {
         const result = await erpnext.callMethod(method, methodArgs, httpMethod);
         return textResult(JSON.stringify(result, null, 2));
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
         return textResult(`Failed to call method ${method}: ${message}`, true);
+      }
+    }
+
+    case "note_document":
+    case "post_timeline":
+    case "comment_document": {
+      const doctype = String(args?.doctype ?? "");
+      const docName = String(args?.name ?? "");
+      const data = args?.data as Record<string, unknown> | undefined;
+      const content = String(
+        data?.message ??
+          args?.message ??
+          args?.text ??
+          args?.content ??
+          data?.body ??
+          args?.body ??
+          ""
+      );
+      let commentEmail = String(
+        data?.author_email ??
+          args?.author_email ??
+          args?.comment_email ??
+          ""
+      );
+      let commentBy = String(
+        data?.author_name ?? args?.author_name ?? args?.comment_by ?? ""
+      );
+
+      if (!doctype || !docName || !content.trim()) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          "Doctype, name, and data.message are required"
+        );
+      }
+
+      if (!commentEmail || !commentBy) {
+        const userProfile = await profile.get(false);
+        commentEmail = commentEmail || userProfile.erpnextUser || userProfile.workEmail;
+        commentBy = commentBy || userProfile.fullName || userProfile.employeeName;
+      }
+
+      if (!commentEmail || !commentBy) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          "comment_email and comment_by are required (or load profile via get_user_profile first)"
+        );
+      }
+
+      try {
+        const result = await erpnext.addDocumentComment({
+          reference_doctype: doctype,
+          reference_name: docName,
+          content,
+          comment_email: commentEmail,
+          comment_by: commentBy,
+        });
+        return textResult(JSON.stringify(result, null, 2));
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return textResult(`Failed to add document comment: ${message}`, true);
       }
     }
 

@@ -17,16 +17,15 @@ Create Livro **Leave Application** records using **only** the `user-erpnext` MCP
 - **Only** `CallMcpTool` on server `user-erpnext`. No shell scripts, no axios.
 - **`get_user_profile`** with `sync: true` — always step 1.
 - If user shares identity details → **`update_user_profile`** before creating leave.
-- **`check_auth`** — confirm `loggedUser` matches `profile.erpnextUser`.
+- **Do not call `check_auth` every time** — only on auth errors (see [_shared/auth-lazy.md](../_shared/auth-lazy.md)).
 - **Default: draft** (`status: "Open"`). Do **not** `submit_document` unless user explicitly asks.
 
 ## Workflow
 
 1. **`get_user_profile`** — load `fullName`, `position`, `workEmail`, `company`, `department`, `employeeId`, `erpnextUser`.
 2. **`update_user_profile`** — if user gave new name/position/department/email this turn.
-3. **`check_auth`** — stop if not authenticated.
-4. **`get_doctype_schema`** for `Leave Application` — or [leave-application.json](../../memory-lane/doctypes/leave-application.json).
-5. **`get_documents`** — confirm Employee (skip if `employeeId` already set):
+3. **`get_doctype_schema`** for `Leave Application` — or [leave-application.json](../../memory-lane/doctypes/leave-application.json).
+4. **`get_documents`** — confirm Employee (skip if `employeeId` already set):
    ```json
    {
      "doctype": "Employee",
