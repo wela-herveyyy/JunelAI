@@ -11,6 +11,7 @@ import { getActiveToolDefinitions } from "./handlers/tools/filter.js";
 import { UserProfileManager } from "./profile/index.js";
 import { DocTypeCacheManager } from "./doctype-cache/index.js";
 import { createLogger, type Logger } from "./utils/logger.js";
+import type { ValidatedSidSession } from "./auth/sid-session.js";
 
 function readPackageVersion(): string {
   try {
@@ -51,6 +52,21 @@ export async function createServerContext(): Promise<ServerContext> {
         : `No auth configured. ${AUTH_SETUP_HINT}`
     );
   }
+
+  return { logger, erpnext, profile, doctypeCache };
+}
+
+export async function createSessionContext(
+  logger: Logger,
+  session: ValidatedSidSession
+): Promise<ServerContext> {
+  const erpnext = new ERPNextClient(logger);
+  await erpnext.authenticateWithSid(session.sid, session.csrfToken);
+
+  const profile = new UserProfileManager(erpnext);
+  await profile.initialize();
+
+  const doctypeCache = new DocTypeCacheManager(erpnext);
 
   return { logger, erpnext, profile, doctypeCache };
 }

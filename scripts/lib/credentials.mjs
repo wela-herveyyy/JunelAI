@@ -86,16 +86,16 @@ export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} 
 
 export function buildMcpUrlConfig({
   url,
-  authToken,
+  sid,
   toolExclude,
   toolInclude,
   serverName = 'erpnext',
 }) {
   const entry = { url };
 
-  if (authToken) {
+  if (sid) {
     entry.headers = {
-      Authorization: `Bearer ${authToken}`,
+      Authorization: `Bearer ${sid}`,
     };
   }
 
@@ -109,7 +109,7 @@ export function buildMcpUrlConfig({
     },
     _httpServer: {
       url,
-      authToken: authToken || null,
+      auth: sid ? 'Authorization: Bearer <ERPNEXT_SID>' : null,
       env,
       note: 'Start the HTTP server separately: npm run start:http',
     },

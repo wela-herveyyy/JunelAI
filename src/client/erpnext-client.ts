@@ -103,6 +103,17 @@ export class ERPNextClient {
     }
   }
 
+  async authenticateWithSid(sid: string, csrfToken = ""): Promise<string> {
+    this.applySidSession(sid);
+    if (csrfToken) {
+      this.csrfToken = csrfToken;
+    }
+    await this.refreshCsrfToken(!csrfToken);
+    await this.refreshLoggedUser();
+    this.authenticated = true;
+    return this.loggedUser;
+  }
+
   private applySidSession(sid: string): void {
     this.cookies.sid = sid;
     this.authMethod = "sid";
