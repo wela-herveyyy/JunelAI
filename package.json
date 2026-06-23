@@ -34,6 +34,7 @@
     "refresh-auth": "node scripts/refresh-auth.mjs",
     "sync-mcp-tools": "node scripts/export-mcp-tool-descriptors.mjs",
     "start": "node scripts/start-mcp.mjs",
+    "start:http": "node scripts/start-http.mjs",
     "verify-tools": "node scripts/verify-tools.mjs",
     "fix-cursor-mcp": "npm run build && node scripts/fix-cursor-mcp.mjs",
     "install-skills": "node scripts/install-skills.mjs"
@@ -50,7 +51,7 @@
   "engines": {
     "node": ">=18"
   },
-  "author": "Hervey geralph Mapano",
+  "author": "Hervey Geralph Mapano",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
@@ -58,6 +59,7 @@
     "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3"
   }

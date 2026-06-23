@@ -83,3 +83,35 @@ export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} 
     },
   };
 }
+
+export function buildMcpUrlConfig({
+  url,
+  authToken,
+  toolExclude,
+  toolInclude,
+  serverName = 'erpnext',
+}) {
+  const entry = { url };
+
+  if (authToken) {
+    entry.headers = {
+      Authorization: `Bearer ${authToken}`,
+    };
+  }
+
+  const env = {};
+  if (toolExclude) env.ERPNEXT_MCP_TOOL_EXCLUDE = toolExclude;
+  if (toolInclude) env.ERPNEXT_MCP_TOOL_INCLUDE = toolInclude;
+
+  return {
+    mcpServers: {
+      [serverName]: entry,
+    },
+    _httpServer: {
+      url,
+      authToken: authToken || null,
+      env,
+      note: 'Start the HTTP server separately: npm run start:http',
+    },
+  };
+}
