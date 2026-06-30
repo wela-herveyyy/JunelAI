@@ -81,10 +81,9 @@
     "modified"
   ],
   "relatedDoctypes": {
-    "product_backlogs_reference": "Livro Task (LT-xxxx)",
-    "notes": "SPB = Sprint Backlog item; often links to Livro Task via product_backlogs_reference"
+    "product_backlogs_reference": "Optional link to legacy product backlog reference field"
   },
-  "notes": "Sprint execution tracker (SPB-xxxx). Differs from Livro Task (LT-xxxx) — use this doctype for sprint-assigned dev work.",
+  "notes": "Sprint execution tracker (SPB-xxxx). Primary doctype for sprint-assigned dev work. Livro Task (LT-xxxx) is retired.",
   "_meta": {
     "cachedAt": "2026-06-16",
     "source": "manual",

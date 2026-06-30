@@ -25,7 +25,7 @@ Post and read **timeline comments** on any ERPNext document using **only** the `
 
 1. **`get_user_profile`** — `fullName`, `workEmail`, `erpnextUser`.
 2. **Resolve target** from user message:
-   - DocType + name (e.g. `Livro Task` / `LT-2026-09102`, `Leave Application` / `HR-LAP-2025-00164`, `Sprint Backlogs` / `SPB-01010`).
+   - DocType + name (e.g. `Sprint Backlogs` / `SPB-01010`, `Leave Application` / `HR-LAP-2025-00164`).
    - ERPNext URL → extract doctype slug and name.
    - If ambiguous → `get_documents` with filters; ask once.
 3. **`get_document`** — confirm `{doctype, name}` exists. Stop with clear error if not found.
@@ -75,10 +75,11 @@ Order by `creation desc` is not supported in filters — present results sorted 
 
 | DocType | URL pattern |
 |---------|-------------|
-| Livro Task | `https://erp.livro.systems/app/livro-task/{name}` |
-| Sprint Backlogs | `https://erp.livro.systems/app/sprint-backlogs/{name}` |
-| Leave Application | `https://erp.livro.systems/app/leave-application/{name}` |
-| Other | `https://erp.livro.systems/app/{slug}/{name}` — slug = doctype lowercased, spaces → hyphens |
+| Sprint Backlogs | `{erpnextBaseUrl}/app/sprint-backlogs/{name}` |
+| Leave Application | `{erpnextBaseUrl}/app/leave-application/{name}` |
+| Other | `{erpnextBaseUrl}/app/{slug}/{name}` — slug = doctype lowercased, spaces → hyphens |
+
+Use the school's ERPNext base URL from MCP config (`X-ERPNext-URL` / `X_ERPNEXT_URL`).
 
 ## Errors
 

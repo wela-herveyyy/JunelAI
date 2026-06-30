@@ -1,22 +1,22 @@
 ---
-name: erpnext-livro-task
+name: erpnext-sprint-backlogs
 description: >-
-  Query, create, and update Livro ERPNext Livro Task records via the erpnext MCP
-  server only. Profile-first: get_user_profile before all steps. Use for Livro
-  Tasks, backlog, assignee workload, Silid tasks, or creating/updating tasks.
+  Query, create, and update Livro ERPNext Sprint Backlogs records via the erpnext
+  MCP server only. Profile-first: get_user_profile before all steps. Use for
+  sprint backlog items, dev tasks, assignee workload, Silid tasks, or
+  creating/updating backlog records.
 ---
 
-# ERPNext Livro Task
+# ERPNext Sprint Backlogs
 
-Work with Livro **Livro Task** and related **Sprint Backlogs** records using **only** the `user-erpnext` MCP server.
+Work with Livro **Sprint Backlogs** records using **only** the `user-erpnext` MCP server.
 
 | DocType | ID pattern | Use |
 |---------|------------|-----|
-| Livro Task | `LT-xxxx` | Product backlog / dev tracker |
-| Sprint Backlogs | `SPB-xxxx` | Sprint execution items; links to LT via `product_backlogs_reference` |
+| Sprint Backlogs | `SPB-xxxx` | Sprint execution / dev tracker |
 
-Schema seeds: [livro-task.json](../../memory-lane/doctypes/livro-task.json), [sprint-backlogs.json](../../memory-lane/doctypes/sprint-backlogs.json).  
-Do not use the separate `Product Backlog` doctype (often permission-blocked).
+Schema seed: [sprint-backlogs.json](../../memory-lane/doctypes/sprint-backlogs.json).  
+Do not use the deprecated **Livro Task** doctype or the separate `Product Backlog` doctype (often permission-blocked).
 
 **Profile-first:** All "my tasks" queries and attributions revolve around the user profile. Read [_shared/profile-first.md](../_shared/profile-first.md).
 
@@ -32,13 +32,13 @@ Do not use the separate `Product Backlog` doctype (often permission-blocked).
 
 1. **`get_user_profile`** — `erpnextUser`, `workEmail`, `fullName`, `department`, `position`.
 2. **`update_user_profile`** — if user corrected identity this turn.
-3. **`get_doctype_schema`** for `Livro Task` — or read [livro-task.json](../../memory-lane/doctypes/livro-task.json). Use `listFields` / `commonFilters` for queries.
-5. Pick intent from [queries.md](queries.md) — **every "my" filter uses profile**.
-6. Reply addressing **`profile.fullName`** with task links.
+3. **`get_doctype_schema`** for `Sprint Backlogs` — or read [sprint-backlogs.json](../../memory-lane/doctypes/sprint-backlogs.json). Use `listFields` / `commonFilters` for queries.
+4. Pick intent from [queries.md](queries.md) — **every "my" filter uses profile**.
+5. Reply addressing **`profile.fullName`** with task links.
 
 ## Key fields
 
-(See previous field table — unchanged.)
+See [sprint-backlogs.json](../../memory-lane/doctypes/sprint-backlogs.json) for `dev_assignee`, `current_assignee`, `owner`, `status`, `sprint_assign`, `product_backlogs_reference`, etc.
 
 ## Query patterns (profile-driven)
 
@@ -46,7 +46,7 @@ Do not use the separate `Product Backlog` doctype (often permission-blocked).
 
 ```json
 {
-  "doctype": "Livro Task",
+  "doctype": "Sprint Backlogs",
   "filters": { "dev_assignee": "<profile.erpnextUser>", "status": "Open" }
 }
 ```
@@ -71,7 +71,7 @@ Do not use the separate `Product Backlog` doctype (often permission-blocked).
 
 Only when user **names** another person — resolve via User lookup; do not use profile.
 
-## Create task
+## Create backlog item
 
 - Default `owner` context: user is **`profile.erpnextUser`** unless they assign to others.
 - Gather task fields from user; identity already in profile.
@@ -82,7 +82,7 @@ Only when user **names** another person — resolve via User lookup; do not use 
 Title line from profile:
 
 ```
-Livro Task status — <profile.fullName> (<profile.workEmail>)
+Sprint Backlogs status — <profile.fullName> (<profile.workEmail>)
 ```
 
 Run queries from [queries.md](queries.md) with `profile.erpnextUser` for all "my" scopes.
@@ -91,3 +91,4 @@ Run queries from [queries.md](queries.md) with `profile.erpnextUser` for all "my
 
 - Use hardcoded emails for "my tasks" — always `profile.erpnextUser`.
 - Invent counts — always fetch via MCP.
+- Query **Livro Task** — that doctype is retired; use **Sprint Backlogs** only.

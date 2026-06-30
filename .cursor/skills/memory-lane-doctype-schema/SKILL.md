@@ -39,11 +39,11 @@ Resource: `erpnext://doctype-schema/{doctype}`
 {
   "server": "user-erpnext",
   "toolName": "get_doctype_schema",
-  "arguments": { "doctype": "Livro Task" }
+  "arguments": { "doctype": "Sprint Backlogs" }
 }
 ```
 
-Or read seed: `.cursor/memory-lane/doctypes/livro-task.json`
+Or read seed: `.cursor/memory-lane/doctypes/sprint-backlogs.json`
 
 ### 2. Build query from schema
 
@@ -59,7 +59,7 @@ Schema is cached automatically — later sessions skip ERPNext meta fetch.
 
 | DocType | Seed path |
 |---------|-----------|
-| Livro Task | [livro-task.json](../../memory-lane/doctypes/livro-task.json) |
+| Sprint Backlogs | [sprint-backlogs.json](../../memory-lane/doctypes/sprint-backlogs.json) |
 | Leave Application | [leave-application.json](../../memory-lane/doctypes/leave-application.json) |
 | Minutes of Meeting | [minutes-of-meeting.json](../../memory-lane/doctypes/minutes-of-meeting.json) |
 | Salary Slip | [salary-slip.json](../../memory-lane/doctypes/salary-slip.json) |
@@ -75,7 +75,7 @@ get_user_profile → get_doctype_schema → get_documents / create_document
 
 | Skill | DocType seed |
 |-------|----------------|
-| erpnext-livro-task | livro-task.json |
+| erpnext-sprint-backlogs | sprint-backlogs.json |
 | erpnext-leave-application | leave-application.json |
 | erpnext-minutes-of-meeting | minutes-of-meeting.json |
 | erpnext-salary-summary | salary-slip.json |

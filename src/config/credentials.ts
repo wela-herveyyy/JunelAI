@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { CREDENTIAL_ENV_KEYS } from "../constants.js";
+import { ERPNEXT_URL_MCP_ENV } from "./erpnext-url.js";
 
 const SESSION_KEYS = ["ERPNEXT_SID", "ERPNEXT_CSRF_TOKEN", "ERPNEXT_COOKIE"] as const;
 
@@ -35,6 +36,10 @@ export async function loadCredentialsIntoEnv(
     return credentialsPath;
   } catch {
     return null;
+  } finally {
+    if (process.env.ERPNEXT_URL && !process.env[ERPNEXT_URL_MCP_ENV]) {
+      process.env[ERPNEXT_URL_MCP_ENV] = process.env.ERPNEXT_URL;
+    }
   }
 }
 

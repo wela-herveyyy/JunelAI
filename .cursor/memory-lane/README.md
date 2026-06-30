@@ -6,7 +6,7 @@ User profile is the **center of every ERPNext skill** in this repo.
 
 | Tool | When |
 |------|------|
-| `get_user_profile` | Before leave, MOM, Livro Task, salary, or any create/update |
+| `get_user_profile` | Before leave, MOM, Sprint Backlogs, salary, or any create/update |
 | `update_user_profile` | User shares or corrects identity fields |
 
 Stored at `~/.erpnext-mcp/user-profile.json`. Resource: `erpnext://user-profile`.

@@ -1,6 +1,6 @@
 # ERPNext MCP Server
 
-MCP server for ERPNext / Frappe — query documents, create records, run reports, and call whitelisted API methods from Cursor and other MCP clients.
+MCP server for ERPNext / Frappe — query documents, create records, run reports, and call whitelisted API methods from **Cursor**, **Antigravity IDE**, and other MCP clients.
 
 **Author:** [Hervey Geralph Mapano](https://github.com/herveyyy)
 
@@ -48,6 +48,19 @@ Saves credentials to `~/.erpnext-mcp/credentials.json`. Re-run when the session 
 
 Other commands: `npm run setup-auth`, `npm run verify-auth`, `npm run export-mcp-config`
 
+### School ERPNext URL (MCP config, not server env)
+
+Each school has its own ERPNext instance. Set the URL in **your MCP client config** — not on the hosted server.
+
+| Transport | Where to set the school URL |
+| --- | --- |
+| **HTTP** (`url` / `serverUrl`) | `headers.X-ERPNext-URL` |
+| **Stdio** (`command` / `args`) | `env.X_ERPNEXT_URL` in `mcp.json` |
+
+Example schools: `https://erp.livro.systems`, `https://school-a.example.com`.
+
+Credentials file (`~/.erpnext-mcp/credentials.json`) still stores `ERPNEXT_URL` for setup scripts; `export-mcp-config` maps it to `X_ERPNEXT_URL` / `X-ERPNext-URL` in client config.
+
 ### 4. Cursor
 
 Edit `~/.cursor/mcp.json` (Windows: `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json`):
@@ -61,7 +74,7 @@ Edit `~/.cursor/mcp.json` (Windows: `%APPDATA%\Cursor\User\globalStorage\cursor.
         "C:/Users/hmapa/Documents/PROJECTS/MCPs/erpnext-mcp-server/build/index.js"
       ],
       "env": {
-        "ERPNEXT_URL": "https://erp.livro.systems",
+        "X_ERPNEXT_URL": "https://erp.livro.systems",
         "ERPNEXT_SID": "your-session-id-from-browser-cookies"
       }
     }
@@ -74,18 +87,124 @@ Edit `~/.cursor/mcp.json` (Windows: `%APPDATA%\Cursor\User\globalStorage\cursor.
 
 ```json
 "env": {
-  "ERPNEXT_URL": "https://erp.livro.systems",
+  "X_ERPNEXT_URL": "https://erp.livro.systems",
   "ERPNEXT_CREDENTIALS_FILE": "C:/Users/hmapa/.erpnext-mcp/credentials.json"
 }
 ```
 
 Reload Cursor (**Developer: Reload Window**), then confirm **erpnext** is connected under MCP.
 
+### 5. Antigravity IDE
+
+[Antigravity IDE](https://antigravity.google/docs/mcp) uses **`serverUrl`** (not `url`) for remote MCP servers.
+
+**Config file:**
+
+| OS | Path |
+| --- | --- |
+| macOS / Linux | `~/.gemini/config/mcp_config.json` |
+| Windows | `%USERPROFILE%\.gemini\config\mcp_config.json` |
+
+Workspace override: `.agents/mcp_config.json` in your project root.
+
+**Setup in the IDE:** Agent panel → `...` → **MCP Servers** → **Manage MCP Servers** → **View raw config** → save → refresh MCP servers.
+
+#### Local stdio (recommended for dev)
+
+Credentials stay on your machine (`~/.erpnext-mcp/credentials.json`):
+
+```json
+{
+  "mcpServers": {
+    "erpnext": {
+      "command": "node",
+      "args": [
+        "C:/Users/hmapa/Documents/PROJECTS/MCPs/erpnext-mcp-server/build/index.js"
+      ],
+      "env": {
+        "X_ERPNEXT_URL": "https://erp.livro.systems",
+        "ERPNEXT_CREDENTIALS_FILE": "C:/Users/hmapa/.erpnext-mcp/credentials.json"
+      }
+    }
+  }
+}
+```
+
+#### Remote Streamable HTTP (Coolify / hosted)
+
+Start the server with `MCP_TRANSPORT=http` (see [URL transport](#url-transport-streamable-http) below). Point Antigravity at the public URL:
+
+```json
+{
+  "mcpServers": {
+    "erpnext": {
+      "serverUrl": "https://mcp.yourdomain.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "X-ERPNext-URL": "https://erp.livro.systems"
+      }
+    }
+  }
+}
+```
+
+Local HTTP test (`npm run start:http`):
+
+```json
+{
+  "mcpServers": {
+    "erpnext": {
+      "serverUrl": "http://127.0.0.1:3100/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "X-ERPNext-URL": "https://erp.livro.systems"
+      }
+    }
+  }
+}
+```
+
+#### Antigravity IDE vs Cursor
+
+| | Cursor | Antigravity IDE |
+| --- | --- | --- |
+| Config file | `~/.cursor/mcp.json` | `~/.gemini/config/mcp_config.json` |
+| Remote URL key | `url` | **`serverUrl`** |
+| Transport | Streamable HTTP | Streamable HTTP only — **not** legacy SSE-only |
+| Server key | e.g. `erpnext` | Lowercase alphanumeric (`erpnext`) |
+| Tool limit | ~16 per server in UI | ~50 total recommended |
+
+Do **not** use `"url"` or `"transport": { "type": "sse" }` in Antigravity — use `serverUrl` with a Streamable HTTP endpoint.
+
+When `ERPNEXT_SID` expires, run `npm run setup-sid` and update the `Authorization` header.
+
+#### Antigravity SDK (Gemini API)
+
+For code (not the IDE), register the server in `interactions.create` with `environment: "remote"`:
+
+```python
+interaction = client.interactions.create(
+    agent="antigravity-preview-05-2026",
+    input="get my open sprint backlog items",
+    environment="remote",
+    tools=[{
+        "type": "mcp_server",
+        "name": "erpnext",
+        "url": "https://mcp.yourdomain.com/mcp",
+        "headers": {"Authorization": "Bearer YOUR_ERPNEXT_SID", "X-ERPNext-URL": "https://erp.livro.systems"},
+    }],
+)
+```
+
+See [Antigravity agent docs](https://ai.google.dev/gemini-api/docs/antigravity-agent). Tool `name` must be lowercase alphanumeric. Optional: `allowed_tools` to limit exposed tools.
+
 ### URL transport (Streamable HTTP)
 
-Run the MCP server as a local HTTP endpoint and connect Cursor with a `url` instead of `command`/`args`:
+This server exposes **Streamable HTTP** at `/mcp` (`POST` / `GET` / `DELETE`). Use it for Cursor URL config, Coolify, or any remote MCP client.
 
-**1. Start the HTTP server** (uses ERPNext credentials from `~/.erpnext-mcp/credentials.json`):
+Run the MCP server as a local HTTP endpoint and connect with a `url` instead of `command`/`args`:
+
+**1. Start the HTTP server** (no school URL on the server — clients send `X-ERPNext-URL`):
 
 ```bash
 npm run start:http
@@ -107,7 +226,8 @@ On **localhost**, auth is optional. On **public binds** (`0.0.0.0`, Coolify, etc
     "erpnext": {
       "url": "http://127.0.0.1:3100/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID"
+        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
   }
@@ -138,9 +258,8 @@ Server env (Coolify → Environment Variables):
 | `MCP_TRANSPORT` | `http` | Required |
 | `MCP_HOST` | `0.0.0.0` | Bind inside container |
 | `MCP_PORT` | `3000` | Match exposed port (or use Coolify `PORT`) |
-| `ERPNEXT_URL` | `https://erp.livro.systems` | Required for SID validation |
 
-You do **not** need `ERPNEXT_SID` on the server — each client sends their own sid in the `Authorization` header. Tool calls run as that logged-in ERPNext user.
+You do **not** need a school ERPNext URL or `ERPNEXT_SID` on the server — each client sends `X-ERPNext-URL` and their own sid in `Authorization`.
 
 Start command: `node build/index.js` (after `npm install && npm run build`).
 
@@ -152,7 +271,8 @@ Client `mcp.json`:
     "erpnext": {
       "url": "https://mcp.yourdomain.com/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID"
+        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
   }
@@ -160,6 +280,8 @@ Client `mcp.json`:
 ```
 
 When the sid expires, refresh with `npm run setup-sid` and update the header.
+
+For **Antigravity IDE**, use `serverUrl` instead of `url` — see [Antigravity IDE](#5-antigravity-ide) above.
 
 If a tool is missing (Cursor shows ~16 tools max), run:
 
@@ -169,7 +291,7 @@ npm run fix-cursor-mcp
 
 That adds an `erpnext-fields` entry for `get_doctype_fields`. Reload Cursor again.
 
-### 5. Domain skills (Cursor, Claude, Gemini, OpenCode)
+### 6. Domain skills (Cursor, Claude, Gemini, OpenCode)
 
 ```bash
 npm run install-skills
@@ -178,12 +300,13 @@ npm run install-skills
 Copies `.cursor/skills/` and `.cursor/memory-lane/` into each client’s project folder:
 
 
-| Client     | Skills path         |
-| ---------- | ------------------- |
-| Cursor     | `.cursor/skills/`   |
-| Claude     | `.claude/skills/`   |
-| Gemini CLI | `.gemini/skills/`   |
-| OpenCode   | `.opencode/skills/` |
+| Client          | Skills path         |
+| --------------- | ------------------- |
+| Cursor          | `.cursor/skills/`   |
+| Antigravity IDE | `.agents/skills/` or `.gemini/skills/` (via `install-skills`) |
+| Claude          | `.claude/skills/`   |
+| Gemini CLI      | `.gemini/skills/`   |
+| OpenCode        | `.opencode/skills/` |
 
 
 Options:
@@ -225,11 +348,11 @@ Auth is lazy — you do not need `**check_auth**` before every call. Use it only
 ### Example prompts
 
 ```
-get_user_profile with sync true, then get_doctype_schema for Livro Task
+get_user_profile with sync true, then get_doctype_schema for Sprint Backlogs
 ```
 
 ```
-get_documents for Livro Task with filters dev_assignee = me, limit 10
+get_documents for Sprint Backlogs with filters dev_assignee = me, limit 10
 ```
 
 ```
@@ -237,7 +360,7 @@ get_document for Leave Application HR-LAP-2026-00547
 ```
 
 ```
-note_document on Livro Task LT-2026-09102 with message "Ready for QA"
+note_document on Sprint Backlogs SPB-01010 with message "Ready for QA"
 ```
 
 ```
@@ -286,5 +409,4 @@ Set `verbose: true` on create/update/submit/cancel/note tools to get the full do
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).#   J u n e l - W o r k s  
- 
+MIT — see [LICENSE](./LICENSE).

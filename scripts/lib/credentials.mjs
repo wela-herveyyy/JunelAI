@@ -41,6 +41,7 @@ export function credentialsToEnv(data) {
   if (!data) return {};
   const env = {};
   const keys = [
+    'X_ERPNEXT_URL',
     'ERPNEXT_URL',
     'ERPNEXT_SID',
     'ERPNEXT_CSRF_TOKEN',
@@ -55,12 +56,15 @@ export function credentialsToEnv(data) {
       env[key] = data[key];
     }
   }
+  if (env.ERPNEXT_URL && !env.X_ERPNEXT_URL) {
+    env.X_ERPNEXT_URL = env.ERPNEXT_URL;
+  }
   return env;
 }
 
 export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} }) {
   const mergedEnv = {
-    ERPNEXT_URL: baseUrl,
+    X_ERPNEXT_URL: baseUrl,
     ERPNEXT_CREDENTIALS_FILE: credentialsPath,
     ...env,
   };
@@ -87,16 +91,21 @@ export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} 
 export function buildMcpUrlConfig({
   url,
   sid,
+  erpnextUrl,
   toolExclude,
   toolInclude,
   serverName = 'erpnext',
 }) {
   const entry = { url };
 
-  if (sid) {
-    entry.headers = {
-      Authorization: `Bearer ${sid}`,
-    };
+  if (sid || erpnextUrl) {
+    entry.headers = {};
+    if (sid) {
+      entry.headers.Authorization = `Bearer ${sid}`;
+    }
+    if (erpnextUrl) {
+      entry.headers['X-ERPNext-URL'] = erpnextUrl;
+    }
   }
 
   const env = {};
@@ -110,8 +119,9 @@ export function buildMcpUrlConfig({
     _httpServer: {
       url,
       auth: sid ? 'Authorization: Bearer <ERPNEXT_SID>' : null,
+      erpnextUrl: erpnextUrl || null,
       env,
-      note: 'Start the HTTP server separately: npm run start:http',
+      note: 'Start the HTTP server separately: npm run start:http. Each client sends X-ERPNext-URL for their school.',
     },
   };
 }

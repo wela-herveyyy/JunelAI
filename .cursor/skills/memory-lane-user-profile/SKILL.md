@@ -13,7 +13,7 @@ Read [_shared/profile-first.md](../_shared/profile-first.md) — all skills inhe
 
 ## Hard rules
 
-1. **`get_user_profile` first** — no exceptions before leave, MOM, Livro Task, salary, or any create/update.
+1. **`get_user_profile` first** — no exceptions before leave, MOM, Sprint Backlogs, salary, or any create/update.
 2. **Profile drives filters** — `erpnextUser`, `employeeId`, `workEmail`, `department`, `company` come from profile, not memory.
 3. **Update on learn** — user shares identity → `update_user_profile` when MCP is up; otherwise run `npm run setup-profile` (see below).
 4. **Replies use profile** — address user by `fullName`; scope "my" to `erpnextUser` / `employeeId`.
@@ -37,7 +37,7 @@ Stored at `~/.erpnext-mcp/user-profile.json`.
 |-------|-------------------------|
 | Leave application | `employeeId`, `fullName`, `position`, `department`, `company`, `workEmail` |
 | Minutes of meeting | `fullName`, `position`, `department`, `workEmail` |
-| Livro Task | `erpnextUser`, `workEmail`, `fullName` |
+| Sprint Backlogs | `erpnextUser`, `workEmail`, `fullName` |
 | Salary summary | `employeeId`, `fullName`, `position`, `department`, `company` |
 
 ## Workflow

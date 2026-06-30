@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { ERPNextClient } from "./client/erpnext-client.js";
 import { loadCredentialsIntoEnv } from "./config/credentials.js";
 import { AUTH_SETUP_HINT, SERVER_NAME } from "./constants.js";
+import { ERPNEXT_URL_SETUP_HINT } from "./config/erpnext-url.js";
 import { registerResourceHandlers } from "./handlers/resources.js";
 import { registerToolHandlers } from "./handlers/tools/index.js";
 import { getActiveToolDefinitions } from "./handlers/tools/filter.js";
@@ -31,10 +32,21 @@ export interface ServerContext {
   doctypeCache: DocTypeCacheManager;
 }
 
+export async function createMinimalContext(): Promise<{ logger: Logger }> {
+  return { logger: createLogger() };
+}
+
 export async function createServerContext(): Promise<ServerContext> {
   const logger = createLogger();
   const credentialsFile = await loadCredentialsIntoEnv();
-  const erpnext = new ERPNextClient(logger);
+  let erpnext: ERPNextClient;
+  try {
+    erpnext = new ERPNextClient(logger);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : ERPNEXT_URL_SETUP_HINT;
+    throw new Error(message);
+  }
 
   erpnext.setCredentialsFile(credentialsFile);
   await erpnext.initializeAuth();
@@ -58,9 +70,10 @@ export async function createServerContext(): Promise<ServerContext> {
 
 export async function createSessionContext(
   logger: Logger,
-  session: ValidatedSidSession
+  session: ValidatedSidSession,
+  baseUrl: string
 ): Promise<ServerContext> {
-  const erpnext = new ERPNextClient(logger);
+  const erpnext = new ERPNextClient(logger, baseUrl);
   await erpnext.authenticateWithSid(session.sid, session.csrfToken);
 
   const profile = new UserProfileManager(erpnext);

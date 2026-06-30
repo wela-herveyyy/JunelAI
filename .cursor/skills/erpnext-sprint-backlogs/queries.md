@@ -1,4 +1,4 @@
-# Livro Task query reference
+# Sprint Backlogs query reference
 
 **All "my" queries use `get_user_profile` first.** Substitute `profile.erpnextUser` for `loggedUser` and `profile.workEmail` / `profile.fullName` in report headers.
 
@@ -12,12 +12,13 @@
 | My owned backlog | `owner` = `profile.erpnextUser` |
 | Someone's backlog | `owner` = their email (user must name them) |
 | Project board | `project` = PROJ-xxxx |
+| Sprint board | `sprint_assign` = sprint name |
 | Urgent open items | `priority` = Urgent, `status` = Open |
 
 ## Work status report template
 
 ```
-Livro Task status — <profile.fullName> (<profile.workEmail>)
+Sprint Backlogs status — <profile.fullName> (<profile.workEmail>)
 Department: <profile.department> · <profile.position>
 As of: [today]
 
@@ -34,12 +35,12 @@ Owned backlog (owner = profile.erpnextUser) — active: [n]
 ## List fields (default)
 
 ```json
-["name", "subject", "status", "type", "priority", "owner", "current_assignee", "dev_assignee", "project_name", "exp_end_date", "modified"]
+["name", "subject", "status", "type", "priority", "owner", "current_assignee", "dev_assignee", "sprint_assign", "sprint_points", "module", "exp_end_date", "modified"]
 ```
 
 ## ERPNext links
 
-`https://erp.livro.systems/app/livro-task/{name}`
+`{erpnextBaseUrl}/app/sprint-backlogs/{name}` — use the school's ERPNext URL from MCP config (`X-ERPNext-URL`).
 
 ## Create — assign to self
 
@@ -47,6 +48,7 @@ When user says "create a task for me":
 
 ```json
 {
+  "doctype": "Sprint Backlogs",
   "dev_assignee": "<profile.erpnextUser>",
   "subject": "...",
   "type": "Feature Request",

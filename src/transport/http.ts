@@ -6,18 +6,28 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { validateSidSession } from "../auth/sid-session.js";
 import {
+  ERPNEXT_URL_SETUP_HINT,
+  readErpnextUrlHeader,
+  resolveErpnextUrlFromProcessEnv,
+} from "../config/erpnext-url.js";
+import {
   createMcpServer,
   createSessionContext,
-  type ServerContext,
 } from "../create-server.js";
+import { loadCredentialsIntoEnv } from "../config/credentials.js";
 import type { Logger } from "../utils/logger.js";
+
+export interface HttpGatewayContext {
+  logger: Logger;
+}
 
 export interface HttpTransportOptions {
   host: string;
   port: number;
   path: string;
   requireSidAuth: boolean;
-  erpnextUrl: string;
+  /** Optional server default when clients omit X-ERPNext-URL (legacy / single-tenant). */
+  defaultErpnextUrl: string;
 }
 
 const LOCALHOST_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
@@ -54,21 +64,42 @@ export function isPublicHttpBind(host: string): boolean {
 }
 
 export async function startHttpTransport(
-  ctx: ServerContext,
+  ctx: HttpGatewayContext,
   options: HttpTransportOptions
 ): Promise<void> {
-  const { host, port, path, requireSidAuth, erpnextUrl } = options;
+  const { host, port, path, requireSidAuth, defaultErpnextUrl } = options;
   const { logger } = ctx;
   const transports = new Map<string, StreamableHTTPServerTransport>();
   const sessionSids = new Map<string, string>();
+  const sessionBaseUrls = new Map<string, string>();
+
+  const resolveBaseUrl = (
+    req: Request,
+    mcpSessionId?: string
+  ): string | undefined => {
+    const fromHeader = readErpnextUrlHeader(req.headers);
+    if (fromHeader) return fromHeader;
+    if (mcpSessionId) {
+      const bound = sessionBaseUrls.get(mcpSessionId);
+      if (bound) return bound;
+    }
+    return defaultErpnextUrl || undefined;
+  };
 
   const authenticateBearer = async (
     req: Request,
     res: Response,
     mcpSessionId?: string
-  ): Promise<string | null> => {
+  ): Promise<{ sid: string; baseUrl: string } | null> => {
+    const baseUrl = resolveBaseUrl(req, mcpSessionId);
+    if (!baseUrl) {
+      unauthorized(res, ERPNEXT_URL_SETUP_HINT);
+      return null;
+    }
+
     if (!requireSidAuth) {
-      return readBearerToken(req) || process.env.ERPNEXT_SID || null;
+      const sid = readBearerToken(req) || process.env.ERPNEXT_SID || "";
+      return sid ? { sid, baseUrl } : { sid: "", baseUrl };
     }
 
     const bearerSid = readBearerToken(req);
@@ -82,14 +113,15 @@ export async function startHttpTransport(
 
     if (mcpSessionId) {
       const boundSid = sessionSids.get(mcpSessionId);
-      if (boundSid && boundSid === bearerSid) {
-        return bearerSid;
+      const boundUrl = sessionBaseUrls.get(mcpSessionId);
+      if (boundSid === bearerSid && boundUrl === baseUrl) {
+        return { sid: bearerSid, baseUrl };
       }
     }
 
     try {
-      const session = await validateSidSession(erpnextUrl, bearerSid);
-      return session.sid;
+      const session = await validateSidSession(baseUrl, bearerSid);
+      return { sid: session.sid, baseUrl };
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Invalid ERPNext session";
@@ -99,7 +131,7 @@ export async function startHttpTransport(
   };
 
   const connectServer = async (
-    sessionCtx: ServerContext,
+    sessionCtx: Awaited<ReturnType<typeof createSessionContext>>,
     transport: StreamableHTTPServerTransport
   ): Promise<Server> => {
     const server = createMcpServer(sessionCtx);
@@ -113,8 +145,9 @@ export async function startHttpTransport(
 
     try {
       if (sessionId && transports.has(sessionId)) {
-        const sid = await authenticateBearer(req, res, sessionId);
-        if (!sid) return;
+        const auth = await authenticateBearer(req, res, sessionId);
+        if (!auth) return;
+        if (requireSidAuth && !auth.sid) return;
 
         const transport = transports.get(sessionId)!;
         await transport.handleRequest(req, res, body);
@@ -122,21 +155,47 @@ export async function startHttpTransport(
       }
 
       if (!sessionId && isInitializeRequest(body)) {
-        const bearerSid = await authenticateBearer(req, res);
-        if (requireSidAuth && !bearerSid) return;
+        const auth = await authenticateBearer(req, res);
+        if (!auth) return;
+        if (requireSidAuth && !auth.sid) return;
 
-        let sessionCtx = ctx;
-        if (bearerSid) {
-          const validated = await validateSidSession(erpnextUrl, bearerSid);
-          sessionCtx = await createSessionContext(ctx.logger, validated);
+        const { sid, baseUrl } = auth;
+        let sessionCtx: Awaited<ReturnType<typeof createSessionContext>> | null =
+          null;
+
+        let effectiveSid = sid;
+        let effectiveBaseUrl = baseUrl;
+
+        if (!effectiveSid && !requireSidAuth) {
+          await loadCredentialsIntoEnv();
+          effectiveSid = process.env.ERPNEXT_SID || "";
+          if (!effectiveBaseUrl) {
+            effectiveBaseUrl = resolveErpnextUrlFromProcessEnv() || "";
+          }
+        }
+
+        if (effectiveSid && effectiveBaseUrl) {
+          const validated = await validateSidSession(
+            effectiveBaseUrl,
+            effectiveSid
+          );
+          sessionCtx = await createSessionContext(
+            ctx.logger,
+            validated,
+            effectiveBaseUrl
+          );
+        } else {
+          unauthorized(res, ERPNEXT_URL_SETUP_HINT);
+          return;
         }
 
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (id) => {
             transports.set(id, transport);
-            if (bearerSid) {
-              sessionSids.set(id, bearerSid);
+            if (effectiveSid) {
+              sessionSids.set(id, effectiveSid);
+              sessionBaseUrls.set(id, effectiveBaseUrl);
             }
           },
         });
@@ -146,6 +205,7 @@ export async function startHttpTransport(
           if (id) {
             transports.delete(id);
             sessionSids.delete(id);
+            sessionBaseUrls.delete(id);
           }
         };
 
@@ -175,8 +235,8 @@ export async function startHttpTransport(
       return;
     }
 
-    const sid = await authenticateBearer(req, res, sessionId);
-    if (requireSidAuth && !sid) return;
+    const auth = await authenticateBearer(req, res, sessionId);
+    if (requireSidAuth && !auth?.sid) return;
 
     const transport = transports.get(sessionId);
     if (!transport) {
@@ -194,8 +254,8 @@ export async function startHttpTransport(
       return;
     }
 
-    const sid = await authenticateBearer(req, res, sessionId);
-    if (requireSidAuth && !sid) return;
+    const auth = await authenticateBearer(req, res, sessionId);
+    if (requireSidAuth && !auth?.sid) return;
 
     const transport = transports.get(sessionId);
     if (!transport) {
@@ -232,7 +292,13 @@ export async function startHttpTransport(
   const url = `http://${displayHost}:${port}${path}`;
   logger.info(`ERPNext MCP server running on ${url}`);
   if (requireSidAuth) {
-    logger.info("HTTP auth: Authorization Bearer <ERPNEXT_SID> required");
+    logger.info(
+      "HTTP auth: Authorization Bearer <ERPNEXT_SID> + X-ERPNext-URL header required"
+    );
+  } else {
+    logger.info(
+      "HTTP: set X-ERPNext-URL header per school (optional default from X_ERPNEXT_URL env)"
+    );
   }
 
   const shutdown = async (signal: string, log: Logger) => {
@@ -246,6 +312,7 @@ export async function startHttpTransport(
     }
     transports.clear();
     sessionSids.clear();
+    sessionBaseUrls.clear();
     process.exit(0);
   };
 
@@ -260,7 +327,7 @@ export function resolveHttpOptions(argv: string[] = process.argv): HttpTransport
     10
   );
   let path = process.env.MCP_PATH || "/mcp";
-  const erpnextUrl = process.env.ERPNEXT_URL || "";
+  const defaultErpnextUrl = resolveErpnextUrlFromProcessEnv() || "";
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -282,7 +349,7 @@ export function resolveHttpOptions(argv: string[] = process.argv): HttpTransport
     process.env.MCP_REQUIRE_SID_AUTH === "true" ||
     isPublicHttpBind(host);
 
-  return { host, port, path, requireSidAuth, erpnextUrl };
+  return { host, port, path, requireSidAuth, defaultErpnextUrl };
 }
 
 export function isHttpTransportRequested(argv: string[] = process.argv): boolean {

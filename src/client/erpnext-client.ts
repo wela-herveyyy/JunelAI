@@ -2,6 +2,12 @@ import { readFile } from "node:fs/promises";
 import axios, { AxiosInstance } from "axios";
 import { AUTH_SETUP_HINT, FALLBACK_DOCTYPES } from "../constants.js";
 import { detectAuthMethod, loadCredentialsIntoEnv } from "../config/credentials.js";
+import {
+  ERPNEXT_URL_MCP_ENV,
+  ERPNEXT_URL_SETUP_HINT,
+  resolveErpnextUrlFromProcessEnv,
+  normalizeErpnextUrl,
+} from "../config/erpnext-url.js";
 import { resolveCsrfToken } from "./csrf.js";
 import { formatFrappeError, isAuthError, isCsrfError, isNetworkError, parseFrappeMethodResponse } from "./frappe-errors.js";
 import type { Logger } from "../utils/logger.js";
@@ -17,14 +23,16 @@ export class ERPNextClient {
   private credentialsFile: string | null = null;
   private lastAuthError: string | null = null;
 
-  constructor(private readonly logger: Logger) {
-    this.baseUrl = process.env.ERPNEXT_URL || "";
+  constructor(private readonly logger: Logger, baseUrl?: string) {
+    const resolved = baseUrl
+      ? normalizeErpnextUrl(baseUrl)
+      : resolveErpnextUrlFromProcessEnv();
 
-    if (!this.baseUrl) {
-      throw new Error("ERPNEXT_URL environment variable is required");
+    if (!resolved) {
+      throw new Error(ERPNEXT_URL_SETUP_HINT);
     }
 
-    this.baseUrl = this.baseUrl.replace(/\/$/, "");
+    this.baseUrl = resolved;
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
@@ -415,7 +423,10 @@ export class ERPNextClient {
     return (
       this.authenticated ||
       detectAuthMethod() !== "none" ||
-      Boolean(process.env.ERPNEXT_URL && process.env.ERPNEXT_SID)
+      Boolean(
+        (process.env[ERPNEXT_URL_MCP_ENV] || process.env.ERPNEXT_URL) &&
+          process.env.ERPNEXT_SID
+      )
     );
   }
 

@@ -16,7 +16,7 @@ export const TOOL_DEFINITIONS = [
       properties: {
         doctype: {
           type: "string",
-          description: "ERPNext DocType (e.g., Livro Task, Leave Application)",
+          description: "ERPNext DocType (e.g., Sprint Backlogs, Leave Application)",
         },
         refresh: {
           type: "boolean",

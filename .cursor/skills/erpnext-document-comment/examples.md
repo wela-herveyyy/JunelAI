@@ -1,15 +1,15 @@
 # Comment skill examples
 
-## Plain comment on Livro Task
+## Plain comment on Sprint Backlog
 
-User: "Comment on LT-2026-09102: Ready for QA retest on staging."
+User: "Comment on SPB-01010: Ready for QA retest on staging."
 
 ```json
 {
   "toolName": "note_document",
   "arguments": {
-    "doctype": "Livro Task",
-    "name": "LT-2026-09102",
+    "doctype": "Sprint Backlogs",
+    "name": "SPB-01010",
     "data": { "message": "Ready for QA retest on staging." }
   }
 }
@@ -17,7 +17,7 @@ User: "Comment on LT-2026-09102: Ready for QA retest on staging."
 
 After `get_user_profile`, `comment_by` / `comment_email` can be omitted.
 
-## Comment on Sprint Backlog
+## Comment on Sprint Backlog (formatted)
 
 User: "Add update to SPB-01010 about the fix."
 
@@ -48,5 +48,5 @@ User: "What comments are on SPB-01010?"
 
 ## Resolve from URL
 
-URL: `https://erp.livro.systems/app/sprint-backlogs/SPB-01010`  
+URL: `https://school.erp.example/app/sprint-backlogs/SPB-01010`  
 → `Sprint Backlogs`, `SPB-01010`

@@ -38,7 +38,7 @@ npm run refresh-auth
       "command": "node",
       "args": ["C:/path/to/erpnext-mcp-server/build/index.js"],
       "env": {
-        "ERPNEXT_URL": "https://erp.livro.systems",
+        "X_ERPNEXT_URL": "https://erp.livro.systems",
         "ERPNEXT_CREDENTIALS_FILE": "C:/Users/YOU/.erpnext-mcp/credentials.json"
       }
     }

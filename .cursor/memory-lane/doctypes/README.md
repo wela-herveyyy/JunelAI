@@ -18,7 +18,7 @@ Resource: `erpnext://doctype-schema/{doctype}`
 
 | File | DocType |
 |------|---------|
-| `livro-task.json` | Livro Task |
+| `sprint-backlogs.json` | Sprint Backlogs (SPB-xxxx) |
 | `leave-application.json` | Leave Application |
 | `minutes-of-meeting.json` | Minutes of Meeting |
 | `salary-slip.json` | Salary Slip |

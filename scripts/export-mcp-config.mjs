@@ -59,12 +59,11 @@ async function main() {
       process.exit(1);
     }
 
-    const config = buildMcpUrlConfig({ url, sid });
+    const config = buildMcpUrlConfig({ url, sid, erpnextUrl: baseUrl });
     await exportMcpSetup({ mcpServers: config.mcpServers });
     console.log('\nStart the HTTP server in another terminal:');
     console.log(`  npm run start:http -- --host ${cli.host} --port ${cli.port} --path ${mcpPath}`);
-    console.log('\nPublic deploys (Coolify): set MCP_HOST=0.0.0.0 and ERPNEXT_URL only on the server.');
-    console.log('Each client sends their own ERPNEXT_SID as Authorization Bearer.');
+    console.log('\nPublic deploys (Coolify): no school URL on the server — each client sends X-ERPNext-URL + Authorization Bearer.');
     return;
   }
 
