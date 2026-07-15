@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -10,6 +10,7 @@ import {
   readErpnextUrlHeader,
   resolveErpnextUrlFromProcessEnv,
 } from "../config/erpnext-url.js";
+import { SERVER_NAME } from "../constants.js";
 import {
   createMcpServer,
   createSessionContext,
@@ -26,11 +27,23 @@ export interface HttpTransportOptions {
   port: number;
   path: string;
   requireSidAuth: boolean;
-  /** Optional server default when clients omit X-ERPNext-URL (legacy / single-tenant). */
   defaultErpnextUrl: string;
+  corsOrigin: string;
 }
 
 const LOCALHOST_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+const CORS_ALLOWED_HEADERS = [
+  "Content-Type",
+  "Accept",
+  "Authorization",
+  "Mcp-Session-Id",
+  "X-ERPNext-URL",
+].join(", ");
+
+const CORS_EXPOSED_HEADERS = ["Mcp-Session-Id"].join(", ");
+
+const CORS_METHODS = "GET, POST, DELETE, OPTIONS";
 
 function readBearerToken(req: Request): string | undefined {
   const header = req.headers.authorization;
@@ -63,11 +76,24 @@ export function isPublicHttpBind(host: string): boolean {
   return !LOCALHOST_HOSTS.has(host);
 }
 
+function corsMiddleware(origin: string) {
+  return (_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", CORS_METHODS);
+    res.setHeader("Access-Control-Allow-Headers", CORS_ALLOWED_HEADERS);
+    res.setHeader("Access-Control-Expose-Headers", CORS_EXPOSED_HEADERS);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    next();
+  };
+}
+
 export async function startHttpTransport(
   ctx: HttpGatewayContext,
   options: HttpTransportOptions
 ): Promise<void> {
-  const { host, port, path, requireSidAuth, defaultErpnextUrl } = options;
+  const { host, port, path, requireSidAuth, defaultErpnextUrl, corsOrigin } =
+    options;
   const { logger } = ctx;
   const transports = new Map<string, StreamableHTTPServerTransport>();
   const sessionSids = new Map<string, string>();
@@ -160,8 +186,9 @@ export async function startHttpTransport(
         if (requireSidAuth && !auth.sid) return;
 
         const { sid, baseUrl } = auth;
-        let sessionCtx: Awaited<ReturnType<typeof createSessionContext>> | null =
-          null;
+        let sessionCtx: Awaited<
+          ReturnType<typeof createSessionContext>
+        > | null = null;
 
         let effectiveSid = sid;
         let effectiveBaseUrl = baseUrl;
@@ -230,8 +257,14 @@ export async function startHttpTransport(
 
   const handleGet = async (req: Request, res: Response): Promise<void> => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
     if (!sessionId) {
-      res.status(400).send("Missing session ID");
+      res.json({
+        name: SERVER_NAME,
+        protocol: "mcp",
+        transport: "streamable-http",
+        status: "ok",
+      });
       return;
     }
 
@@ -273,10 +306,24 @@ export async function startHttpTransport(
     }
   };
 
+  const handleOptions = (_req: Request, res: Response): void => {
+    res.status(204).end();
+  };
+
   const app = createMcpExpressApp({ host });
-  app.post(path, handlePost);
-  app.get(path, handleGet);
-  app.delete(path, handleDelete);
+
+  app.use(corsMiddleware(corsOrigin));
+
+  const pathWithSlash = path.endsWith("/") ? path : `${path}/`;
+  const pathNoSlash = path.endsWith("/") ? path.slice(0, -1) : path;
+  const paths = pathNoSlash === pathWithSlash ? [path] : [pathNoSlash, pathWithSlash];
+
+  for (const p of paths) {
+    app.options(p, handleOptions);
+    app.post(p, handlePost);
+    app.get(p, handleGet);
+    app.delete(p, handleDelete);
+  }
 
   await new Promise<void>((resolve, reject) => {
     app.listen(port, host, (error?: Error) => {
@@ -289,8 +336,9 @@ export async function startHttpTransport(
   });
 
   const displayHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-  const url = `http://${displayHost}:${port}${path}`;
+  const url = `http://${displayHost}:${port}${pathNoSlash}`;
   logger.info(`ERPNext MCP server running on ${url}`);
+  logger.info(`CORS origin: ${corsOrigin}`);
   if (requireSidAuth) {
     logger.info(
       "HTTP auth: Authorization Bearer <ERPNEXT_SID> + X-ERPNext-URL header required"
@@ -320,7 +368,9 @@ export async function startHttpTransport(
   process.on("SIGTERM", () => void shutdown("SIGTERM", logger));
 }
 
-export function resolveHttpOptions(argv: string[] = process.argv): HttpTransportOptions {
+export function resolveHttpOptions(
+  argv: string[] = process.argv
+): HttpTransportOptions {
   let host = process.env.MCP_HOST || "127.0.0.1";
   let port = Number.parseInt(
     process.env.MCP_PORT || process.env.PORT || "3100",
@@ -328,6 +378,7 @@ export function resolveHttpOptions(argv: string[] = process.argv): HttpTransport
   );
   let path = process.env.MCP_PATH || "/mcp";
   const defaultErpnextUrl = resolveErpnextUrlFromProcessEnv() || "";
+  const corsOrigin = process.env.MCP_CORS_ORIGIN || "*";
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -349,10 +400,12 @@ export function resolveHttpOptions(argv: string[] = process.argv): HttpTransport
     process.env.MCP_REQUIRE_SID_AUTH === "true" ||
     isPublicHttpBind(host);
 
-  return { host, port, path, requireSidAuth, defaultErpnextUrl };
+  return { host, port, path, requireSidAuth, defaultErpnextUrl, corsOrigin };
 }
 
-export function isHttpTransportRequested(argv: string[] = process.argv): boolean {
+export function isHttpTransportRequested(
+  argv: string[] = process.argv
+): boolean {
   if (process.env.MCP_TRANSPORT === "http") return true;
   return argv.includes("--http");
 }

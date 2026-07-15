@@ -94,20 +94,21 @@ Edit `~/.cursor/mcp.json` (Windows: `%APPDATA%\Cursor\User\globalStorage\cursor.
 
 Reload Cursor (**Developer: Reload Window**), then confirm **erpnext** is connected under MCP.
 
-### 5. Antigravity IDE
+### 5. Antigravity IDE / Antigravity CLI
 
-[Antigravity IDE](https://antigravity.google/docs/mcp) uses **`serverUrl`** (not `url`) for remote MCP servers.
+[Antigravity IDE](https://antigravity.google/docs/mcp) and Antigravity CLI (`agy`) use **`serverUrl`** (not `url`) for remote MCP servers.
 
 **Config file:**
 
-| OS | Path |
+| Product | Path |
 | --- | --- |
-| macOS / Linux | `~/.gemini/config/mcp_config.json` |
-| Windows | `%USERPROFILE%\.gemini\config\mcp_config.json` |
-
-Workspace override: `.agents/mcp_config.json` in your project root.
+| Antigravity IDE (global) | `~/.gemini/config/mcp_config.json` |
+| Antigravity CLI (global) | `~/.gemini/config/mcp_config.json` |
+| Workspace override | `.agents/mcp_config.json` in project root |
 
 **Setup in the IDE:** Agent panel → `...` → **MCP Servers** → **Manage MCP Servers** → **View raw config** → save → refresh MCP servers.
+
+**Setup in the CLI:** Type `/mcp` inside the prompt panel to open the interactive MCP Manager, or edit the config file directly.
 
 #### Local stdio (recommended for dev)
 
@@ -164,19 +165,22 @@ Local HTTP test (`npm run start:http`):
 }
 ```
 
-#### Antigravity IDE vs Cursor
+#### Antigravity vs Cursor
 
-| | Cursor | Antigravity IDE |
+| | Cursor | Antigravity IDE / CLI |
 | --- | --- | --- |
 | Config file | `~/.cursor/mcp.json` | `~/.gemini/config/mcp_config.json` |
 | Remote URL key | `url` | **`serverUrl`** |
 | Transport | Streamable HTTP | Streamable HTTP only — **not** legacy SSE-only |
 | Server key | e.g. `erpnext` | Lowercase alphanumeric (`erpnext`) |
 | Tool limit | ~16 per server in UI | ~50 total recommended |
+| Verify | Reload Cursor window | `/mcp` in CLI or refresh in IDE |
 
-Do **not** use `"url"` or `"transport": { "type": "sse" }` in Antigravity — use `serverUrl` with a Streamable HTTP endpoint.
+Do **not** use `"url"`, `"httpUrl"`, or `"transport": { "type": "sse" }` in Antigravity — use `serverUrl` with a Streamable HTTP endpoint.
 
 When `ERPNEXT_SID` expires, run `npm run setup-sid` and update the `Authorization` header.
+
+> **Known issue (Antigravity CLI):** Some versions discover tools but fail to invoke them ([antigravity-cli#71](https://github.com/google-antigravity/antigravity-cli/issues/71)). Workaround: use Antigravity IDE or Cursor until the CLI fix ships.
 
 #### Antigravity SDK (Gemini API)
 
@@ -200,7 +204,9 @@ See [Antigravity agent docs](https://ai.google.dev/gemini-api/docs/antigravity-a
 
 ### URL transport (Streamable HTTP)
 
-This server exposes **Streamable HTTP** at `/mcp` (`POST` / `GET` / `DELETE`). Use it for Cursor URL config, Coolify, or any remote MCP client.
+This server exposes **Streamable HTTP** at `/mcp` (`POST` / `GET` / `DELETE` / `OPTIONS`). Use it for Cursor URL config, Coolify, or any remote MCP client.
+
+CORS is enabled by default (`Access-Control-Allow-Origin: *`). Restrict with `MCP_CORS_ORIGIN=https://yourdomain.com` if needed. The `Mcp-Session-Id` header is exposed for browser-based clients (Antigravity IDE, MCP Inspector).
 
 Run the MCP server as a local HTTP endpoint and connect with a `url` instead of `command`/`args`:
 
@@ -258,6 +264,7 @@ Server env (Coolify → Environment Variables):
 | `MCP_TRANSPORT` | `http` | Required |
 | `MCP_HOST` | `0.0.0.0` | Bind inside container |
 | `MCP_PORT` | `3000` | Match exposed port (or use Coolify `PORT`) |
+| `MCP_CORS_ORIGIN` | `*` | CORS allowed origin (default `*`; restrict in production) |
 
 You do **not** need a school ERPNext URL or `ERPNEXT_SID` on the server — each client sends `X-ERPNext-URL` and their own sid in `Authorization`.
 
