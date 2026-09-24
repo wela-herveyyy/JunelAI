@@ -122,6 +122,15 @@ export class ERPNextClient {
     return this.loggedUser;
   }
 
+  async authenticateWithApiKey(apiKey: string, apiSecret: string): Promise<string> {
+    this.axiosInstance.defaults.headers.common["Authorization"] =
+      `token ${apiKey}:${apiSecret}`;
+    this.authMethod = "api_key";
+    this.authenticated = true;
+    await this.refreshLoggedUser();
+    return this.loggedUser;
+  }
+
   private applySidSession(sid: string): void {
     this.cookies.sid = sid;
     this.authMethod = "sid";

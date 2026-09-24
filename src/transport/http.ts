@@ -4,6 +4,13 @@ import type { Request, Response, NextFunction } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { validateApiKeySession } from "../auth/api-key-session.js";
+import {
+  HTTP_AUTH_SETUP_HINT,
+  httpAuthFingerprint,
+  readHttpClientAuth,
+  type HttpClientAuth,
+} from "../auth/http-auth.js";
 import { validateSidSession } from "../auth/sid-session.js";
 import {
   ERPNEXT_URL_SETUP_HINT,
@@ -12,6 +19,7 @@ import {
 } from "../config/erpnext-url.js";
 import { SERVER_NAME } from "../constants.js";
 import {
+  createApiKeySessionContext,
   createMcpServer,
   createSessionContext,
 } from "../create-server.js";
@@ -39,17 +47,13 @@ const CORS_ALLOWED_HEADERS = [
   "Authorization",
   "Mcp-Session-Id",
   "X-ERPNext-URL",
+  "X-ERPNext-API-Key",
+  "X-ERPNext-API-Secret",
 ].join(", ");
 
 const CORS_EXPOSED_HEADERS = ["Mcp-Session-Id"].join(", ");
 
 const CORS_METHODS = "GET, POST, DELETE, OPTIONS";
-
-function readBearerToken(req: Request): string | undefined {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return undefined;
-  return header.slice("Bearer ".length).trim();
-}
 
 function unauthorized(res: Response, message = "Unauthorized"): void {
   res.status(401).json({
@@ -96,7 +100,7 @@ export async function startHttpTransport(
     options;
   const { logger } = ctx;
   const transports = new Map<string, StreamableHTTPServerTransport>();
-  const sessionSids = new Map<string, string>();
+  const sessionAuth = new Map<string, string>();
   const sessionBaseUrls = new Map<string, string>();
 
   const resolveBaseUrl = (
@@ -112,45 +116,48 @@ export async function startHttpTransport(
     return defaultErpnextUrl || undefined;
   };
 
-  const authenticateBearer = async (
+  const authenticateClient = async (
     req: Request,
     res: Response,
     mcpSessionId?: string
-  ): Promise<{ sid: string; baseUrl: string } | null> => {
+  ): Promise<(HttpClientAuth & { baseUrl: string }) | null> => {
     const baseUrl = resolveBaseUrl(req, mcpSessionId);
     if (!baseUrl) {
       unauthorized(res, ERPNEXT_URL_SETUP_HINT);
       return null;
     }
 
+    const parsed = readHttpClientAuth(req.headers);
+
     if (!requireSidAuth) {
-      const sid = readBearerToken(req) || process.env.ERPNEXT_SID || "";
-      return sid ? { sid, baseUrl } : { sid: "", baseUrl };
+      if (parsed) return { ...parsed, baseUrl };
+      const sid = process.env.ERPNEXT_SID || "";
+      return { kind: "sid", sid, baseUrl };
     }
 
-    const bearerSid = readBearerToken(req);
-    if (!bearerSid) {
-      unauthorized(
-        res,
-        "Missing Authorization: Bearer <ERPNEXT_SID>. Get sid from npm run setup-sid"
-      );
+    if (!parsed) {
+      unauthorized(res, HTTP_AUTH_SETUP_HINT);
       return null;
     }
 
     if (mcpSessionId) {
-      const boundSid = sessionSids.get(mcpSessionId);
+      const boundAuth = sessionAuth.get(mcpSessionId);
       const boundUrl = sessionBaseUrls.get(mcpSessionId);
-      if (boundSid === bearerSid && boundUrl === baseUrl) {
-        return { sid: bearerSid, baseUrl };
+      if (boundAuth === httpAuthFingerprint(parsed) && boundUrl === baseUrl) {
+        return { ...parsed, baseUrl };
       }
     }
 
     try {
-      const session = await validateSidSession(baseUrl, bearerSid);
-      return { sid: session.sid, baseUrl };
+      if (parsed.kind === "api_key") {
+        await validateApiKeySession(baseUrl, parsed.apiKey, parsed.apiSecret);
+      } else {
+        await validateSidSession(baseUrl, parsed.sid);
+      }
+      return { ...parsed, baseUrl };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Invalid ERPNext session";
+        error instanceof Error ? error.message : "Invalid ERPNext credentials";
       unauthorized(res, message);
       return null;
     }
@@ -171,9 +178,9 @@ export async function startHttpTransport(
 
     try {
       if (sessionId && transports.has(sessionId)) {
-        const auth = await authenticateBearer(req, res, sessionId);
+        const auth = await authenticateClient(req, res, sessionId);
         if (!auth) return;
-        if (requireSidAuth && !auth.sid) return;
+        if (requireSidAuth && auth.kind === "sid" && !auth.sid) return;
 
         const transport = transports.get(sessionId)!;
         await transport.handleRequest(req, res, body);
@@ -181,38 +188,61 @@ export async function startHttpTransport(
       }
 
       if (!sessionId && isInitializeRequest(body)) {
-        const auth = await authenticateBearer(req, res);
+        const auth = await authenticateClient(req, res);
         if (!auth) return;
-        if (requireSidAuth && !auth.sid) return;
+        if (requireSidAuth && auth.kind === "sid" && !auth.sid) return;
 
-        const { sid, baseUrl } = auth;
         let sessionCtx: Awaited<
           ReturnType<typeof createSessionContext>
         > | null = null;
+        let boundAuth: HttpClientAuth | null = auth.kind === "sid" && !auth.sid ? null : auth;
+        let effectiveBaseUrl = auth.baseUrl;
 
-        let effectiveSid = sid;
-        let effectiveBaseUrl = baseUrl;
+        if (auth.kind === "api_key") {
+          sessionCtx = await createApiKeySessionContext(
+            ctx.logger,
+            auth.baseUrl,
+            auth.apiKey,
+            auth.apiSecret
+          );
+        } else {
+          let effectiveSid = auth.sid;
 
-        if (!effectiveSid && !requireSidAuth) {
-          await loadCredentialsIntoEnv();
-          effectiveSid = process.env.ERPNEXT_SID || "";
-          if (!effectiveBaseUrl) {
-            effectiveBaseUrl = resolveErpnextUrlFromProcessEnv() || "";
+          if (!effectiveSid && !requireSidAuth) {
+            await loadCredentialsIntoEnv();
+            const envKey = process.env.ERPNEXT_API_KEY || "";
+            const envSecret = process.env.ERPNEXT_API_SECRET || "";
+            effectiveSid = process.env.ERPNEXT_SID || "";
+            if (!effectiveBaseUrl) {
+              effectiveBaseUrl = resolveErpnextUrlFromProcessEnv() || "";
+            }
+            if (envKey && envSecret && effectiveBaseUrl) {
+              sessionCtx = await createApiKeySessionContext(
+                ctx.logger,
+                effectiveBaseUrl,
+                envKey,
+                envSecret
+              );
+              boundAuth = { kind: "api_key", apiKey: envKey, apiSecret: envSecret };
+            }
+          }
+
+          if (!sessionCtx && effectiveSid && effectiveBaseUrl) {
+            const validated = await validateSidSession(
+              effectiveBaseUrl,
+              effectiveSid
+            );
+            sessionCtx = await createSessionContext(
+              ctx.logger,
+              validated,
+              effectiveBaseUrl
+            );
+            boundAuth = { kind: "sid", sid: effectiveSid };
           }
         }
 
-        if (effectiveSid && effectiveBaseUrl) {
-          const validated = await validateSidSession(
-            effectiveBaseUrl,
-            effectiveSid
-          );
-          sessionCtx = await createSessionContext(
-            ctx.logger,
-            validated,
-            effectiveBaseUrl
-          );
-        } else {
-          unauthorized(res, ERPNEXT_URL_SETUP_HINT);
+        if (!sessionCtx || !effectiveBaseUrl) {
+          unauthorized(res, HTTP_AUTH_SETUP_HINT);
           return;
         }
 
@@ -220,8 +250,8 @@ export async function startHttpTransport(
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (id) => {
             transports.set(id, transport);
-            if (effectiveSid) {
-              sessionSids.set(id, effectiveSid);
+            if (boundAuth) {
+              sessionAuth.set(id, httpAuthFingerprint(boundAuth));
               sessionBaseUrls.set(id, effectiveBaseUrl);
             }
           },
@@ -231,7 +261,7 @@ export async function startHttpTransport(
           const id = transport.sessionId;
           if (id) {
             transports.delete(id);
-            sessionSids.delete(id);
+            sessionAuth.delete(id);
             sessionBaseUrls.delete(id);
           }
         };
@@ -268,8 +298,8 @@ export async function startHttpTransport(
       return;
     }
 
-    const auth = await authenticateBearer(req, res, sessionId);
-    if (requireSidAuth && !auth?.sid) return;
+    const auth = await authenticateClient(req, res, sessionId);
+    if (requireSidAuth && (!auth || (auth.kind === "sid" && !auth.sid))) return;
 
     const transport = transports.get(sessionId);
     if (!transport) {
@@ -287,8 +317,8 @@ export async function startHttpTransport(
       return;
     }
 
-    const auth = await authenticateBearer(req, res, sessionId);
-    if (requireSidAuth && !auth?.sid) return;
+    const auth = await authenticateClient(req, res, sessionId);
+    if (requireSidAuth && (!auth || (auth.kind === "sid" && !auth.sid))) return;
 
     const transport = transports.get(sessionId);
     if (!transport) {
@@ -341,7 +371,7 @@ export async function startHttpTransport(
   logger.info(`CORS origin: ${corsOrigin}`);
   if (requireSidAuth) {
     logger.info(
-      "HTTP auth: Authorization Bearer <ERPNEXT_SID> + X-ERPNext-URL header required"
+      "HTTP auth: Authorization Bearer <ERPNEXT_SID> (default) or token <API_KEY>:<API_SECRET> + X-ERPNext-URL"
     );
   } else {
     logger.info(
@@ -359,7 +389,7 @@ export async function startHttpTransport(
       }
     }
     transports.clear();
-    sessionSids.clear();
+    sessionAuth.clear();
     sessionBaseUrls.clear();
     process.exit(0);
   };

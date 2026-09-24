@@ -25,6 +25,18 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function parseArgs(argv) {
+  const args = { url: '', apiKey: '', apiSecret: '', json: false };
+  for (let i = 2; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--json') args.json = true;
+    else if (arg === '--url' && argv[i + 1]) args.url = argv[++i];
+    else if ((arg === '--api-key' || arg === '--apiKey') && argv[i + 1]) args.apiKey = argv[++i];
+    else if ((arg === '--api-secret' || arg === '--apiSecret') && argv[i + 1]) args.apiSecret = argv[++i];
+  }
+  return args;
+}
+
 function openBrowser(url) {
   const cmd = platform() === 'win32' ? 'cmd' : platform() === 'darwin' ? 'open' : 'xdg-open';
   const args = platform() === 'win32' ? ['/c', 'start', '', url] : [url];
@@ -57,9 +69,47 @@ async function loginWithCredentials(baseUrl, username, password) {
 }
 
 
-async function main() {
-  const rl = readline.createInterface({ input, output });
+async function persist(credentials, baseUrl) {
   const serverPath = join(__dirname, '..', 'build', 'index.js').replace(/\\/g, '/');
+  const savedPath = await saveCredentials(credentials);
+  const config = buildMcpConfig({
+    serverPath,
+    credentialsPath: savedPath,
+    baseUrl,
+  });
+  await exportMcpSetup(config);
+  return savedPath;
+}
+
+async function main() {
+  const cli = parseArgs(process.argv);
+
+  if (cli.apiKey || cli.apiSecret) {
+    const baseUrl = normalizeUrl(cli.url || process.env.X_ERPNEXT_URL || DEFAULT_ERP_URL);
+    try {
+      const verifiedUser = await testApiKey(baseUrl, cli.apiKey, cli.apiSecret);
+      const savedPath = await persist({
+        ERPNEXT_URL: baseUrl,
+        ERPNEXT_API_KEY: cli.apiKey,
+        ERPNEXT_API_SECRET: cli.apiSecret,
+        _meta: { authMethod: 'api_key', loggedUser: verifiedUser },
+      }, baseUrl);
+      if (cli.json) {
+        console.log(JSON.stringify({ ok: true, method: 'api_key', user: verifiedUser, url: baseUrl, credentials: savedPath }));
+      } else {
+        console.log(`\nConnected as: ${verifiedUser}`);
+        console.log(`Saved credentials: ${savedPath}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (cli.json) console.log(JSON.stringify({ ok: false, error: message }));
+      else console.error(`\nAuth failed: ${message}\n`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  const rl = readline.createInterface({ input, output });
 
   console.log('\nERPNext MCP — Auth Setup\n');
   console.log('Supports Cursor, Claude, Gemini, Codex, and OpenCode.');
@@ -127,13 +177,7 @@ async function main() {
 
   console.log(`\nConnected as: ${verifiedUser}`);
 
-  const savedPath = await saveCredentials(credentials);
-  const config = buildMcpConfig({
-    serverPath,
-    credentialsPath: savedPath,
-    baseUrl,
-  });
-  await exportMcpSetup(config);
+  const savedPath = await persist(credentials, baseUrl);
   console.log(`Saved credentials: ${savedPath}`);
 
   rl.close();

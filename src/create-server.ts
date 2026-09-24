@@ -84,6 +84,23 @@ export async function createSessionContext(
   return { logger, erpnext, profile, doctypeCache };
 }
 
+export async function createApiKeySessionContext(
+  logger: Logger,
+  baseUrl: string,
+  apiKey: string,
+  apiSecret: string
+): Promise<ServerContext> {
+  const erpnext = new ERPNextClient(logger, baseUrl);
+  await erpnext.authenticateWithApiKey(apiKey, apiSecret);
+
+  const profile = new UserProfileManager(erpnext);
+  await profile.initialize();
+
+  const doctypeCache = new DocTypeCacheManager(erpnext);
+
+  return { logger, erpnext, profile, doctypeCache };
+}
+
 export function createMcpServer(ctx: ServerContext): Server {
   const server = new Server(
     {

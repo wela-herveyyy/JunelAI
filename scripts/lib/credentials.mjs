@@ -91,6 +91,8 @@ export function buildMcpConfig({ serverPath, credentialsPath, baseUrl, env = {} 
 export function buildMcpUrlConfig({
   url,
   sid,
+  apiKey,
+  apiSecret,
   erpnextUrl,
   toolExclude,
   toolInclude,
@@ -98,9 +100,11 @@ export function buildMcpUrlConfig({
 }) {
   const entry = { url };
 
-  if (sid || erpnextUrl) {
+  if (sid || (apiKey && apiSecret) || erpnextUrl) {
     entry.headers = {};
-    if (sid) {
+    if (apiKey && apiSecret) {
+      entry.headers.Authorization = `token ${apiKey}:${apiSecret}`;
+    } else if (sid) {
       entry.headers.Authorization = `Bearer ${sid}`;
     }
     if (erpnextUrl) {
@@ -112,16 +116,22 @@ export function buildMcpUrlConfig({
   if (toolExclude) env.ERPNEXT_MCP_TOOL_EXCLUDE = toolExclude;
   if (toolInclude) env.ERPNEXT_MCP_TOOL_INCLUDE = toolInclude;
 
+  const authHint = apiKey && apiSecret
+    ? 'Authorization: token <API_KEY>:<API_SECRET>'
+    : sid
+      ? 'Authorization: Bearer <ERPNEXT_SID>'
+      : null;
+
   return {
     mcpServers: {
       [serverName]: entry,
     },
     _httpServer: {
       url,
-      auth: sid ? 'Authorization: Bearer <ERPNEXT_SID>' : null,
+      auth: authHint,
       erpnextUrl: erpnextUrl || null,
       env,
-      note: 'Start the HTTP server separately: npm run start:http. Each client sends X-ERPNext-URL for their school.',
+      note: 'Start the HTTP server separately: npm run start:http. Each client sends X-ERPNext-URL plus token (API key) or Bearer SID.',
     },
   };
 }

@@ -8,7 +8,7 @@ MCP server for ERPNext / Frappe — query documents, create records, run reports
 
 - Node.js 18+
 - ERPNext / Frappe instance
-- ERPNext credentials (SID recommended)
+- ERPNext credentials (API key + secret recommended; SID also supported)
 
 ## Setup
 
@@ -40,13 +40,21 @@ npm run setup-profile -- \
 
 ### 3. ERPNext auth
 
+API key + secret (recommended, does not expire like a browser SID):
+
+```bash
+npm run setup-auth -- --api-key YOUR_KEY --api-secret YOUR_SECRET --url https://erp.livro.systems --json
+```
+
+SID remains the default HTTP header (`Authorization: Bearer <SID>`). Use it when you do not have API keys:
+
 ```bash
 npm run setup-sid
 ```
 
-Saves credentials to `~/.erpnext-mcp/credentials.json`. Re-run when the session expires.
+Saves credentials to `~/.erpnext-mcp/credentials.json`. Re-run `setup-sid` when the session expires.
 
-Other commands: `npm run setup-auth`, `npm run verify-auth`, `npm run export-mcp-config`
+Other commands: `npm run verify-auth`, `npm run export-mcp-config`
 
 ### School ERPNext URL (MCP config, not server env)
 
@@ -141,13 +149,15 @@ Start the server with `MCP_TRANSPORT=http` (see [URL transport](#url-transport-s
     "erpnext": {
       "serverUrl": "https://mcp.yourdomain.com/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "Authorization": "token YOUR_API_KEY:YOUR_API_SECRET",
         "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
   }
 }
 ```
+
+SID is still the default if you omit the API key — send `Authorization: Bearer YOUR_ERPNEXT_SID` instead.
 
 Local HTTP test (`npm run start:http`):
 
@@ -157,7 +167,7 @@ Local HTTP test (`npm run start:http`):
     "erpnext": {
       "serverUrl": "http://127.0.0.1:3100/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "Authorization": "token YOUR_API_KEY:YOUR_API_SECRET",
         "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
@@ -195,7 +205,7 @@ interaction = client.interactions.create(
         "type": "mcp_server",
         "name": "erpnext",
         "url": "https://mcp.yourdomain.com/mcp",
-        "headers": {"Authorization": "Bearer YOUR_ERPNEXT_SID", "X-ERPNext-URL": "https://erp.livro.systems"},
+        "headers": {"Authorization": "token YOUR_API_KEY:YOUR_API_SECRET", "X-ERPNext-URL": "https://erp.livro.systems"},
     }],
 )
 ```
@@ -222,9 +232,9 @@ Defaults: `http://127.0.0.1:3100/mcp`. Override with env or flags:
 npm run start:http -- --host 127.0.0.1 --port 3100 --path /mcp
 ```
 
-On **localhost**, auth is optional. On **public binds** (`0.0.0.0`, Coolify, etc.) the server requires your ERPNext session id as a Bearer token.
+On **localhost**, auth is optional. On **public binds** (`0.0.0.0`, Coolify, etc.) the client must send credentials: API key (`token`) or SID (`Bearer`, default).
 
-**2. Point Cursor at the URL** in `mcp.json` (use your `ERPNEXT_SID` from `npm run setup-sid`):
+**2. Point Cursor at the URL** in `mcp.json` (API key from `npm run setup-auth`, or SID from `npm run setup-sid`):
 
 ```json
 {
@@ -232,7 +242,7 @@ On **localhost**, auth is optional. On **public binds** (`0.0.0.0`, Coolify, etc
     "erpnext": {
       "url": "http://127.0.0.1:3100/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "Authorization": "token YOUR_API_KEY:YOUR_API_SECRET",
         "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
@@ -240,11 +250,20 @@ On **localhost**, auth is optional. On **public binds** (`0.0.0.0`, Coolify, etc
 }
 ```
 
-Or use env interpolation so the sid is not stored in the file:
+Default SID option:
 
 ```json
 "headers": {
-  "Authorization": "Bearer ${env:ERPNEXT_SID}"
+  "Authorization": "Bearer YOUR_ERPNEXT_SID",
+  "X-ERPNext-URL": "https://erp.livro.systems"
+}
+```
+
+Or interpolate from env:
+
+```json
+"headers": {
+  "Authorization": "token ${env:ERPNEXT_API_KEY}:${env:ERPNEXT_API_SECRET}"
 }
 ```
 
@@ -266,7 +285,7 @@ Server env (Coolify → Environment Variables):
 | `MCP_PORT` | `3000` | Match exposed port (or use Coolify `PORT`) |
 | `MCP_CORS_ORIGIN` | `*` | CORS allowed origin (default `*`; restrict in production) |
 
-You do **not** need a school ERPNext URL or `ERPNEXT_SID` on the server — each client sends `X-ERPNext-URL` and their own sid in `Authorization`.
+You do **not** need a school ERPNext URL or credentials on the server — each client sends `X-ERPNext-URL` and either `Authorization: token <API_KEY>:<API_SECRET>` or `Authorization: Bearer <ERPNEXT_SID>`.
 
 Start command: `node build/index.js` (after `npm install && npm run build`).
 
@@ -278,7 +297,7 @@ Client `mcp.json`:
     "erpnext": {
       "url": "https://mcp.yourdomain.com/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_ERPNEXT_SID",
+        "Authorization": "token YOUR_API_KEY:YOUR_API_SECRET",
         "X-ERPNext-URL": "https://erp.livro.systems"
       }
     }
@@ -286,7 +305,11 @@ Client `mcp.json`:
 }
 ```
 
-When the sid expires, refresh with `npm run setup-sid` and update the header.
+SID default (expires; refresh with `npm run setup-sid`):
+
+```json
+"Authorization": "Bearer YOUR_ERPNEXT_SID"
+```
 
 For **Antigravity IDE**, use `serverUrl` instead of `url` — see [Antigravity IDE](#5-antigravity-ide) above.
 

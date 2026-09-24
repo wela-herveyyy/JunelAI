@@ -53,17 +53,26 @@ async function main() {
   if (cli.http) {
     const mcpPath = cli.path.startsWith('/') ? cli.path : `/${cli.path}`;
     const url = `http://${cli.host}:${cli.port}${mcpPath}`;
+    const apiKey = data.ERPNEXT_API_KEY || '';
+    const apiSecret = data.ERPNEXT_API_SECRET || '';
     const sid = data.ERPNEXT_SID || '';
-    if (!sid) {
-      console.error('ERPNEXT_SID missing from credentials file — run: npm run setup-sid');
+    if (!(apiKey && apiSecret) && !sid) {
+      console.error('Credentials need ERPNEXT_API_KEY + ERPNEXT_API_SECRET, or ERPNEXT_SID');
+      console.error('Run: npm run setup-auth   (API key) or npm run setup-sid');
       process.exit(1);
     }
 
-    const config = buildMcpUrlConfig({ url, sid, erpnextUrl: baseUrl });
+    const config = buildMcpUrlConfig({
+      url,
+      sid,
+      apiKey,
+      apiSecret,
+      erpnextUrl: baseUrl,
+    });
     await exportMcpSetup({ mcpServers: config.mcpServers });
     console.log('\nStart the HTTP server in another terminal:');
     console.log(`  npm run start:http -- --host ${cli.host} --port ${cli.port} --path ${mcpPath}`);
-    console.log('\nPublic deploys (Coolify): no school URL on the server — each client sends X-ERPNext-URL + Authorization Bearer.');
+    console.log('\nPublic deploys (Coolify): each client sends X-ERPNext-URL plus Authorization token (API key) or Bearer SID.');
     return;
   }
 
