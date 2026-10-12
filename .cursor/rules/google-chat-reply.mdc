@@ -1,0 +1,10 @@
+---
+description: Prefer straight Google Chat replies; thread only when needed
+alwaysApply: true
+---
+
+# Google Chat: reply vs thread
+
+**Most cases are a straight reply.** Omit `thread_id` on `send_message`.
+
+Use a thread only if they asked, you are already in a multi-message thread, or the answer would spam the space. Short answers stay in the space.

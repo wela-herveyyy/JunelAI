@@ -104,6 +104,22 @@ Reload Cursor (**Developer: Reload Window**), then confirm **erpnext** is connec
 
 ### 5. Antigravity IDE / Antigravity CLI
 
+Generate client configuration after setting up ERPNext credentials:
+
+```bash
+npm run export-mcp-config
+npm run export-mcp-config -- --http
+```
+
+The first command generates local stdio configuration using `node build/index.js`;
+the second generates HTTP configuration. Merge the `mcpServers` object from
+`~/.erpnext-mcp/client-configs/antigravity.mcp_config.json` into your global
+`~/.gemini/config/mcp_config.json` or workspace `.agents/mcp_config.json`.
+For a hosted server, replace `serverUrl` with your HTTPS `/mcp` endpoint.
+Keep the generated `Authorization` and `X-ERPNext-URL` headers. These snippets
+contain credentials; keep them private. Refresh MCP servers in the IDE or use
+`/mcp` in the CLI. The exporter does not modify your active client configuration.
+
 [Antigravity IDE](https://antigravity.google/docs/mcp) and Antigravity CLI (`agy`) use **`serverUrl`** (not `url`) for remote MCP servers.
 
 **Config file:**
@@ -436,6 +452,23 @@ Set `verbose: true` on create/update/submit/cancel/note tools to get the full do
 | `erpnext://DocTypes`                 | All DocTypes                   |
 | `erpnext://{doctype}/{name}`         | Single document JSON           |
 
+
+## GitHub trust scan
+
+[Snyk Agent Scan](https://github.com/snyk/agent-scan) (formerly mcp-scan) checks this server’s tool descriptions for prompt injection, tool poisoning, and cross-server escalation. [`.github/workflows/mcp-security.yml`](.github/workflows/mcp-security.yml) runs that check on push, pull request, and nightly. It only starts the server built in the job (`node build/index.js`). It does not execute third-party MCP configs.
+
+Add a repository secret named `SNYK_TOKEN` (Snyk account → API Token). The check fails until that secret exists. Results are uploaded as the `mcp-scan-results` artifact. `--ci` fails the job when a risk or a scan error remains.
+
+Tool-description hashes are stored in `.github/mcp-scan-state`. After the first green run, commit that file so later scans flag a changed description (an MCP rug pull).
+
+To audit some other server before you install it, point the scanner at that config from a disposable machine or container. The scan starts whatever command the config names.
+
+```bash
+uvx --python 3.13 snyk-agent-scan@0.6.7 inspect path/to/mcp.json
+uvx --python 3.13 snyk-agent-scan@0.6.7 --ci --dangerously-run-mcp-servers path/to/mcp.json
+```
+
+Use `--dangerously-run-mcp-servers` only after you have read the command and arguments in that config.
 
 ## License
 

@@ -16,6 +16,13 @@ export function getMcpClients() {
 
   return [
     {
+      id: 'antigravity',
+      name: 'Antigravity CLI / IDE',
+      configPath: join(home, '.gemini', 'config', 'mcp_config.json'),
+      settingsHint: 'Merge antigravity.mcp_config.json globally, or into .agents/mcp_config.json in your workspace; refresh MCP servers.',
+      format: 'json',
+    },
+    {
       id: 'cursor',
       name: 'Cursor',
       configPath: IS_WIN
@@ -64,6 +71,16 @@ export function getMcpClients() {
 }
 
 export function buildCodexToml(serverEntry) {
+  if (serverEntry.url || serverEntry.serverUrl) {
+    return [
+      '[mcp_servers.erpnext]',
+      `url = ${JSON.stringify(serverEntry.url || serverEntry.serverUrl)}`,
+      '',
+      '[mcp_servers.erpnext.http_headers]',
+      ...Object.entries(serverEntry.headers || {}).map(([key, value]) => `${JSON.stringify(key)} = ${JSON.stringify(value)}`),
+      '',
+    ].join('\n');
+  }
   const lines = [
     '[mcp_servers.erpnext]',
     `command = ${JSON.stringify(serverEntry.command)}`,
@@ -79,13 +96,26 @@ export function buildCodexToml(serverEntry) {
   return `${lines.join('\n')}\n`;
 }
 
+/** Antigravity uses serverUrl for remote connections; stdio entries are unchanged. */
+export function buildAntigravityConfig(mcpConfig) {
+  return {
+    mcpServers: Object.fromEntries(Object.entries(mcpConfig.mcpServers).map(([name, entry]) => {
+      const { url, httpUrl, ...rest } = entry;
+      const serverUrl = entry.serverUrl || url || httpUrl;
+      return [name, serverUrl ? { ...rest, serverUrl } : { ...rest }];
+    })),
+  };
+}
+
 export function printMcpSetupInstructions(mcpConfig) {
   const serverEntry = mcpConfig.mcpServers.erpnext;
   const clients = getMcpClients();
 
-  console.log('\n=== MCP config (all JSON-based clients) ===\n');
+  console.log('\n=== Generic MCP config (check your client transport schema) ===\n');
   console.log('Merge this block into your app config under "mcpServers":\n');
   console.log(JSON.stringify(mcpConfig, null, 2));
+  console.log('\n=== Antigravity CLI / IDE: mcp_config.json ===\n');
+  console.log(JSON.stringify(buildAntigravityConfig(mcpConfig), null, 2));
 
   console.log('\n=== Supported AI clients ===\n');
   for (const client of clients) {
@@ -99,7 +129,7 @@ export function printMcpSetupInstructions(mcpConfig) {
   console.log(buildCodexToml(serverEntry));
 
   console.log('=== Notes ===');
-  console.log('- JSON clients (Cursor, Claude, Gemini, OpenCode): use the same mcpServers JSON.');
+  console.log('- Antigravity: use antigravity.mcp_config.json (remote entries require serverUrl).');
   console.log('- Codex: append the TOML block to ~/.codex/config.toml.');
   console.log('- Restart your AI app after saving the config.');
   console.log('- When SID expires: npm run setup-sid\n');
@@ -113,6 +143,7 @@ export async function writeMcpClientFiles(mcpConfig) {
   const files = {
     'mcpServers.json': JSON.stringify(mcpConfig, null, 2),
     'cursor.mcp.json': JSON.stringify(mcpConfig, null, 2),
+    'antigravity.mcp_config.json': JSON.stringify(buildAntigravityConfig(mcpConfig), null, 2),
     'claude_desktop_config.json': JSON.stringify(mcpConfig, null, 2),
     'gemini.settings.json': JSON.stringify(mcpConfig, null, 2),
     'opencode.config.json': JSON.stringify(mcpConfig, null, 2),
@@ -122,6 +153,9 @@ export async function writeMcpClientFiles(mcpConfig) {
       '',
       'JSON apps (Cursor, Claude Desktop, Gemini CLI, OpenCode):',
       '  Copy mcpServers from mcpServers.json into each app config file.',
+      'Antigravity CLI / IDE:',
+      '  Merge antigravity.mcp_config.json into ~/.gemini/config/mcp_config.json',
+      '  or .agents/mcp_config.json in the target workspace.',
       '',
       'Codex CLI:',
       '  Merge codex.config.toml into ~/.codex/config.toml',

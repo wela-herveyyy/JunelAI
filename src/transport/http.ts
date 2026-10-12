@@ -355,18 +355,21 @@ export async function startHttpTransport(
     app.delete(p, handleDelete);
   }
 
-  await new Promise<void>((resolve, reject) => {
-    app.listen(port, host, (error?: Error) => {
+  const listener = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
+    const listening = app.listen(port, host, (error?: Error) => {
       if (error) {
         reject(error);
         return;
       }
-      resolve();
+      resolve(listening);
     });
+    listening.once("error", reject);
   });
 
   const displayHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-  const url = `http://${displayHost}:${port}${pathNoSlash}`;
+  const address = listener.address();
+  const actualPort = typeof address === "object" && address ? address.port : port;
+  const url = `http://${displayHost}:${actualPort}${pathNoSlash}`;
   logger.info(`ERPNext MCP server running on ${url}`);
   logger.info(`CORS origin: ${corsOrigin}`);
   if (requireSidAuth) {

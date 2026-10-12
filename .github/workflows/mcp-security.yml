@@ -1,0 +1,54 @@
+name: MCP Security Audit
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Audit published MCP server
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::error::Add repository secret SNYK_TOKEN from https://app.snyk.io/account. Tool names and descriptions are sent to Snyk for analysis."
+            exit 1
+          fi
+          set -o pipefail
+          uvx --python 3.13 snyk-agent-scan@0.6.7 \
+            --ci \
+            --dangerously-run-mcp-servers \
+            --no-skills \
+            --json \
+            --storage-file .github/mcp-scan-state \
+            --server-timeout 30 \
+            .github/mcp-scan.config.json | tee mcp-scan-results.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mcp-scan-results
+          path: mcp-scan-results.json
+          if-no-files-found: ignore

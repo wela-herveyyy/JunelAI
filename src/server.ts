@@ -1,4 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { loadCredentialsIntoEnv } from "./config/credentials.js";
 import {
   createMcpServer,
   createMinimalContext,
@@ -13,6 +14,9 @@ import {
 
 export async function startServer(): Promise<void> {
   if (isHttpTransportRequested()) {
+    // Load saved defaults only for local binds; hosted sessions use client headers.
+    const initialOptions = resolveHttpOptions();
+    if (!initialOptions.requireSidAuth) await loadCredentialsIntoEnv();
     const { logger } = await createMinimalContext();
     await startHttpTransport({ logger }, resolveHttpOptions());
     return;

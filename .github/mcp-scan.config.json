@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "erpnext": {
+      "command": "node",
+      "args": ["build/index.js"],
+      "env": {
+        "X_ERPNEXT_URL": "https://erp.example.invalid"
+      }
+    }
+  }
+}

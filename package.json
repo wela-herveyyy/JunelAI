@@ -29,7 +29,7 @@
     "verify-auth": "node scripts/verify-auth.mjs",
     "setup-profile": "node scripts/setup-profile.mjs",
     "export-mcp-config": "node scripts/export-mcp-config.mjs",
-    "save-leave-draft": "node scripts/save-leave-draft.mjs",
+    "test": "node --test tests/*.test.mjs",
     "smoke-test-tools": "node scripts/smoke-test-tools.mjs",
     "refresh-auth": "node scripts/refresh-auth.mjs",
     "sync-mcp-tools": "node scripts/export-mcp-tool-descriptors.mjs",
