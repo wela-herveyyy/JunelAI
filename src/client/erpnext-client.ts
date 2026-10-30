@@ -248,6 +248,10 @@ export class ERPNextClient {
   }
 
   private async ensureWriteAuth(forceCsrf = false): Promise<void> {
+    if (this.authMethod === "api_key") {
+      return;
+    }
+
     const token = await resolveCsrfToken(
       this.axiosInstance,
       forceCsrf ? undefined : process.env.ERPNEXT_CSRF_TOKEN
